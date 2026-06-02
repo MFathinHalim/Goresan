@@ -10,7 +10,9 @@ export async function GET(req: NextRequest, { params }: { params: { username: st
   const { searchParams } = new URL(req.url);
   const page = parseInt(searchParams.get("page") || "1");
 
-  const user = await User.findOne({ username: params.username }).select("-password");
+    const user = await User.findOne({
+    $or: [{ username: params.username }, { _id: params.username }]
+    }).select("-password");
   if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
   const result = await posts.getData(undefined, page, 12, user._id.toString());

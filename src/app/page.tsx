@@ -1,57 +1,61 @@
 "use client";
-
-import toast, { Toaster } from "react-hot-toast";
-
-import Image from "next/image";
-import axios from "axios";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import axios from "axios";
+import toast, { Toaster } from "react-hot-toast";
 
 export default function Home() {
   const router = useRouter();
+  const [posts, setPosts] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/posts")
+      .then(res => res.json())
+      .then(data => {
+        setPosts(data.posts || []);
+        setLoading(false);
+      });
+  }, []);
 
   const handleLogout = async () => {
     try {
-      const response = await axios.get("/api/users/logout");
-      if (response.status === 200) {
-        toast.success("Logged out successfully.");
-        router.push("/login");
-      }
+      await axios.get("/api/users/logout");
+      toast.success("Logged out");
+      router.push("/login");
     } catch (error: any) {
       toast.error(error.message);
     }
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-gray-50">
+    <div>
       <Toaster />
 
-      <div className="text-center">
-        <h1 className="mb-2 text-4xl font-bold text-gray-800">
-          NextJS Authentication
-        </h1>
-        <p className="max-w-md mb-8 text-gray-600">
-          The landing page for the application that implements the
-          authentication system.
-        </p>
+      <nav>
+        <span>Goresan</span>
+        <a href="/upload">Upload</a>
+        <button onClick={handleLogout}>Logout</button>
+      </nav>
 
-        <button
-          onClick={handleLogout}
-          className="px-6 py-2 mb-8 text-sm font-medium leading-6 text-white uppercase transition bg-blue-500 rounded-full shadow ripple hover:shadow-lg hover:bg-blue-600 focus:outline-none"
-        >
-          Logout
-        </button>
-
-        <div className="relative w-full max-w-lg h-auto overflow-hidden rounded-lg shadow-lg">
-          <Image
-            src="/auth.jpeg"
-            alt="Auth Image"
-            layout="responsive"
-            width={500}
-            height={500}
-            objectFit="cover"
-          />
+      {loading ? (
+        <p>Loading...</p>
+      ) : posts.length === 0 ? (
+        <p>Belum ada karya. <a href="/upload">Upload yang pertama!</a></p>
+      ) : (
+        <div>
+          {posts.map((post: any) => (
+            <div key={post._id}>
+              <a href={`/post/${post.id}`}>
+                <img src={post.img} alt={post.title} width={300} />
+                <p>{post.title}</p>
+                <p>{post.user?.username}</p>
+                <p>{post.like?.users?.length} likes</p>
+              </a>
+            </div>
+          ))}
         </div>
-      </div>
+      )}
     </div>
   );
 }

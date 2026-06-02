@@ -1,33 +1,49 @@
-import Link from "next/link"; // Import the Link component
-import React from "react";
+"use client";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
 
-const ProfileDetails = ({ params }: { params: any }) => {
+export default function ProfileDetails({ params }: { params: { id: string } }) {
+  const [user, setUser] = useState<any>(null);
+  const [posts, setPosts] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch(`/api/users/${params.id}`)
+      .then(res => res.json())
+      .then(data => {
+        setUser(data.user);
+        setPosts(data.posts || []);
+        setLoading(false);
+      });
+  }, []);
+
+  if (loading) return <p>Loading...</p>;
+  if (!user) return <p>User tidak ditemukan</p>;
+
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50">
-      <div className="w-full max-w-lg p-8 space-y-6 bg-white rounded-xl shadow-lg text-center">
-        <h1 className="text-3xl font-bold text-gray-800">Profile Page</h1>
+    <div>
+      <Link href="/">← Kembali</Link>
 
-        <div className="flex justify-center">
-          <hr className="w-full border-t border-gray-300" />
-        </div>
+      <h1>{user.username}</h1>
+      <p>{user.email}</p>
 
+      <h2>Karya</h2>
+      {posts.length === 0 ? (
+        <p>Belum ada karya.</p>
+      ) : (
         <div>
-          <h2 className="text-xl font-semibold text-gray-700">Profile ID</h2>
-          <p className="p-3 mt-2 bg-green-500 rounded-lg text-white font-medium">
-            {params.id}
-          </p>
+          {posts.map((post: any) => (
+            <div key={post._id}>
+              <a href={`/post/${post.id}`}>
+                <img src={post.img} alt={post.title} width={300} />
+                <p>{post.title}</p>
+                <p>{post.like?.users?.length} likes</p>
+              </a>
+            </div>
+          ))}
         </div>
-
-        {/* Back to Profile Page Button */}
-        <Link
-          href="/profile"
-          className="inline-block px-6 py-2 text-sm font-medium leading-6 text-center text-white uppercase transition bg-blue-500 rounded-full shadow ripple hover:shadow-lg hover:bg-blue-600 focus:outline-none"
-        >
-          Back to Profile
-        </Link>
-      </div>
+      )}
     </div>
   );
-};
-
-export default ProfileDetails;
+}
