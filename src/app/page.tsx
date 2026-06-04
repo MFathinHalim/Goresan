@@ -143,15 +143,38 @@ export default function Home() {
 
       {/* SORT */}
       <div className="px-6 pt-6 pb-4 flex">
-        <div className="flex border rounded-full overflow-hidden">
-          <button onClick={() => setSort("terbaru")} className="px-5 py-1.5">
-            Terbaru
-          </button>
-          <button onClick={() => setSort("terpopuler")} className="px-5 py-1.5">
-            Terpopuler
-          </button>
-        </div>
-      </div>
+  <div className="flex border border-zinc-300 dark:border-zinc-700 rounded-full overflow-hidden">
+
+    <button
+      onClick={() => setSort("terbaru")}
+      className={`
+        px-5 py-1.5 text-sm transition
+        ${
+          sort === "terbaru"
+            ? "bg-purple-700 dark:bg-purple-400 text-white"
+            : "bg-white dark:bg-zinc-900 text-gray-600 dark:text-zinc-300 hover:text-purple-700 dark:hover:text-purple-300"
+        }
+      `}
+    >
+      Terbaru
+    </button>
+
+    <button
+      onClick={() => setSort("terpopuler")}
+      className={`
+        px-5 py-1.5 text-sm transition
+        ${
+          sort === "terpopuler"
+            ? "bg-purple-700 dark:bg-purple-400 text-white"
+            : "bg-white dark:bg-zinc-900 text-gray-600 dark:text-zinc-300 hover:text-purple-700 dark:hover:text-purple-300"
+        }
+      `}
+    >
+      Terpopuler
+    </button>
+
+  </div>
+</div>
 
       {/* GRID */}
       <div className="px-6 pb-8">
