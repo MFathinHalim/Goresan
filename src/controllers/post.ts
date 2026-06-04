@@ -3,8 +3,6 @@ import mongoose from "mongoose";
 import Post from "../models/postModel";
 import { connect } from "../dbConfig/dbConfig";
 
-await connect();
-
 class Posts {
   static instance: Posts;
   #posts;
