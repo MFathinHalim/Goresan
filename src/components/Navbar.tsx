@@ -10,13 +10,14 @@ import {
 } from "lucide-react";
 
 import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useUser } from "@/context/userContext";
 
 type ThemeMode = "system" | "light" | "dark";
 
 export default function Navbar() {
   const router = useRouter();
+  const pathname = usePathname();
   const { user, logout } = useUser();
 
   const [search, setSearch] = useState("");
@@ -26,7 +27,6 @@ export default function Navbar() {
 
   const menuRef = useRef<HTMLDivElement>(null);
 
-  // THEME ENGINE
   function applyTheme(mode: ThemeMode, systemDark: boolean) {
     const isDark =
       mode === "dark" ? true : mode === "light" ? false : systemDark;
@@ -45,6 +45,13 @@ export default function Navbar() {
     const q = params.get("q");
     if (q) setSearch(q);
   }, []);
+
+  // reset search input saat pindah halaman
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const q = params.get("q");
+    setSearch(q || "");
+  }, [pathname]);
 
   function cycleTheme() {
     const systemDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
@@ -77,7 +84,9 @@ export default function Navbar() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  const hideOnPaths = ["/login", "/signup", "/verifyemail"];
   if (!mounted) return <nav className="h-14 border-b" />;
+  if (hideOnPaths.some(p => pathname.startsWith(p))) return null;
 
   return (
     <nav className="sticky top-0 z-50 flex items-center gap-4 px-6 py-3 border-b
@@ -85,8 +94,8 @@ export default function Navbar() {
       border-zinc-200 dark:border-zinc-800 text-black dark:text-white"
     >
       {/* LOGO */}
-      <a href="/" className="font-bold text-2xl text-purple-700 dark:text-purple-400 shrink-0">
-        <img src="/icon.png" className="w-10 inline-block rounded-full" alt="Goresan Logo" />
+      <a href="/" className="shrink-0">
+        <img src="/icon.png" className="w-10 rounded-full" alt="Goresan Logo" />
       </a>
 
       {/* SEARCH */}
@@ -117,15 +126,15 @@ export default function Navbar() {
         </button>
 
         <a
-          href="/upload"
+          href={user ? "/upload" : "/login"}
           className="p-2 rounded-full border border-zinc-300 dark:border-zinc-700"
         >
           <Plus size={18} />
         </a>
       </div>
 
-      {/* PROFILE */}
-      {user && (
+      {/* PROFILE / LOGIN */}
+      {user ? (
         <div className="relative" ref={menuRef}>
           <button onClick={() => setOpenMenu(!openMenu)}>
             <img
@@ -143,7 +152,6 @@ export default function Navbar() {
                 <p className="text-xs text-gray-500 dark:text-gray-300 truncate">{user.email}</p>
               </div>
 
-              {/* MOBILE ONLY */}
               <div className="md:hidden">
                 <button
                   onClick={cycleTheme}
@@ -167,8 +175,8 @@ export default function Navbar() {
                   Upload
                 </a>
               </div>
-                  <a
-              
+
+              <a
                 href={`/profile/${user._id}`}
                 className="flex items-center gap-2 px-4 py-3 hover:bg-zinc-100 dark:hover:bg-zinc-800 no-underline text-black dark:text-white"
               >
@@ -186,6 +194,13 @@ export default function Navbar() {
             </div>
           )}
         </div>
+      ) : (
+        <a
+          href="/login"
+          className="px-4 py-2 text-sm rounded-full border border-purple-700 dark:border-purple-400 text-purple-700 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 no-underline shrink-0"
+        >
+          Login
+        </a>
       )}
     </nav>
   );
