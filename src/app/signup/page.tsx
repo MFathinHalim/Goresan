@@ -38,7 +38,7 @@ export default function SignUp() {
       toast.success("Cek email kamu untuk verifikasi");
 
       setTimeout(() => {
-        router.push("/verify-email");
+        router.push("/verifyemail");
       }, 1200);
     } catch {
       toast.error("Gagal daftar");
