@@ -3,19 +3,21 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { toast, Toaster } from "react-hot-toast";
-import { useSearchParams } from "next/navigation";
 
 export default function VerifyEmail() {
-  const searchParams = useSearchParams();
-  const token = searchParams.get("token");
+  const [token, setToken] = useState<string | null>(null);
 
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [verified, setVerified] = useState(false);
 
-  // ======================
-  // AUTO VERIFY (token ada)
-  // ======================
+  // ambil token dari URL di client
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const t = params.get("token");
+    setToken(t);
+  }, []);
+
   const verifyWithToken = async (t: string) => {
     try {
       setLoading(true);
@@ -26,7 +28,10 @@ export default function VerifyEmail() {
 
       setVerified(true);
       toast.success("Email berhasil diverifikasi");
-      window.location.href = "/login";
+
+      setTimeout(() => {
+        window.location.href = "/login";
+      }, 800);
     } catch (e: any) {
       toast.error(e.response?.data?.message || "Token tidak valid");
     } finally {
@@ -40,9 +45,6 @@ export default function VerifyEmail() {
     }
   }, [token]);
 
-  // ======================
-  // RESEND EMAIL (manual)
-  // ======================
   const resend = async () => {
     try {
       setLoading(true);
@@ -60,14 +62,9 @@ export default function VerifyEmail() {
   };
 
   return (
-    <div
-      className="min-h-[calc(100vh-64px)] flex items-center justify-center px-4"
-    >
+    <div className="min-h-[calc(100vh-64px)] flex items-center justify-center px-4">
       <Toaster />
 
-      {/* ======================
-          MODE 1: TOKEN ADA
-      ====================== */}
       {token ? (
         <div className="text-center">
           {loading && !verified && (
@@ -81,9 +78,6 @@ export default function VerifyEmail() {
           )}
         </div>
       ) : (
-        /* ======================
-           MODE 2: MANUAL RESEND
-        ====================== */
         <div className="w-full max-w-md text-center">
           <h1 className="text-5xl mb-8">Verifikasi Email</h1>
 
