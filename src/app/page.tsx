@@ -1,14 +1,13 @@
 "use client";
 
 import { useEffect, useState, useRef, useCallback } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import PostCard from "@/components/Post";
 
 export default function Home() {
   const router = useRouter();
-  const searchParams = useSearchParams();
 
-  const q = searchParams.get("q") || "";
+  const [q, setQ] = useState("");
 
   const [posts, setPosts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -21,11 +20,12 @@ export default function Home() {
   const loadingRef = useRef(false);
   const pageRef = useRef(1);
 
-  const isSearchMode = !!q;
+  // ambil query dari URL (client-only, aman)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    setQ(params.get("q") || "");
+  }, []);
 
-  // =========================
-  // FETCH POSTS
-  // =========================
   async function fetchPosts(pageNum: number, replace = false) {
     if (loadingRef.current) return;
 
@@ -77,7 +77,6 @@ export default function Home() {
     }
   }
 
-  // reset on search change
   useEffect(() => {
     pageRef.current = 1;
     setPosts([]);
@@ -87,9 +86,6 @@ export default function Home() {
     fetchPosts(1, true);
   }, [q]);
 
-  // =========================
-  // INFINITE SCROLL
-  // =========================
   const handleObserver = useCallback(
     (entries: IntersectionObserverEntry[]) => {
       const target = entries[0];
@@ -119,9 +115,6 @@ export default function Home() {
     return () => observer.disconnect();
   }, [handleObserver]);
 
-  // =========================
-  // SORT
-  // =========================
   const sortedPosts =
     sort === "terpopuler"
       ? [...posts].sort(
@@ -131,34 +124,16 @@ export default function Home() {
         )
       : posts;
 
-  // =========================
-  // UI
-  // =========================
   return (
-    <div
-      className="
-        min-h-[calc(100vh-64px)]
-        bg-white dark:bg-zinc-950
-        text-black dark:text-zinc-100
-      "
-    >
-      {/* ================= TAGS ================= */}
+    <div className="min-h-[calc(100vh-64px)] bg-white dark:bg-zinc-950 text-black dark:text-zinc-100">
+      {/* TAGS */}
       {popularTags.length > 0 && (
-        <div className="px-6 pt-4 flex justify-center gap-2 overflow-x-auto scrollbar-hide">
+        <div className="px-6 pt-4 flex justify-center gap-2 overflow-x-auto">
           {popularTags.map(tag => (
             <button
               key={tag}
-              onClick={() =>
-                router.push(`/search?q=${encodeURIComponent(tag)}`)
-              }
-              className="
-                px-4 py-1.5 rounded-full text-sm shrink-0
-                border border-gray-300 dark:border-zinc-700
-                text-gray-600 dark:text-zinc-300
-                hover:border-purple-600 dark:hover:border-purple-300
-                hover:text-purple-700 dark:hover:text-purple-300
-                transition
-              "
+              onClick={() => router.push(`/search?q=${encodeURIComponent(tag)}`)}
+              className="px-4 py-1.5 rounded-full text-sm border border-gray-300 dark:border-zinc-700"
             >
               #{tag}
             </button>
@@ -166,77 +141,34 @@ export default function Home() {
         </div>
       )}
 
-      {/* ================= SORT ================= */}
+      {/* SORT */}
       <div className="px-6 pt-6 pb-4 flex">
-        <div className="flex border border-gray-300 dark:border-zinc-700 rounded-full overflow-hidden">
-          <button
-            onClick={() => setSort("terbaru")}
-            className={`
-              px-5 py-1.5 text-sm transition
-              ${
-                sort === "terbaru"
-                  ? "bg-purple-700 dark:bg-purple-400 text-white"
-                  : "bg-white dark:bg-zinc-900 text-gray-600 dark:text-zinc-300"
-              }
-            `}
-          >
+        <div className="flex border rounded-full overflow-hidden">
+          <button onClick={() => setSort("terbaru")} className="px-5 py-1.5">
             Terbaru
           </button>
-
-          <button
-            onClick={() => setSort("terpopuler")}
-            className={`
-              px-5 py-1.5 text-sm transition
-              ${
-                sort === "terpopuler"
-                  ? "bg-purple-700 dark:bg-purple-400 text-white"
-                  : "bg-white dark:bg-zinc-900 text-gray-600 dark:text-zinc-300"
-              }
-            `}
-          >
+          <button onClick={() => setSort("terpopuler")} className="px-5 py-1.5">
             Terpopuler
           </button>
         </div>
       </div>
 
-      {/* ================= GRID ================= */}
+      {/* GRID */}
       <div className="px-6 pb-8">
         {loading ? (
-          <p className="text-center text-gray-400 dark:text-zinc-500 mt-10">
-            Loading...
-          </p>
-        ) : posts.length === 0 ? (
-          <p className="text-center text-gray-400 dark:text-zinc-500 mt-10">
-            Belum ada karya.
-          </p>
+          <p className="text-center mt-10">Loading...</p>
         ) : (
           <>
-            <div className="gap-4 columns-1 sm:columns-2 md:columns-3 lg:columns-4">
+            <div className="columns-1 sm:columns-2 md:columns-3 lg:columns-4 gap-4">
               {sortedPosts.map(post => (
                 <PostCard key={post._id} post={post} />
               ))}
             </div>
 
             <div ref={observerRef} className="h-10 mt-4" />
-
-            {loadingMore && (
-              <p className="text-center text-gray-400 dark:text-zinc-500 text-sm mt-2">
-                Memuat lebih banyak...
-              </p>
-            )}
           </>
         )}
       </div>
-
-      {/* scrollbar hide */}
-      <style jsx>{`
-        .scrollbar-hide {
-          scrollbar-width: none;
-        }
-        .scrollbar-hide::-webkit-scrollbar {
-          display: none;
-        }
-      `}</style>
     </div>
   );
 }
