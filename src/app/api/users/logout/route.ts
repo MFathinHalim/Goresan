@@ -1,18 +1,25 @@
 import { NextResponse } from "next/server";
-import { connect } from "@/dbConfig/dbConfig";
-
-connect();
 
 export async function GET() {
   try {
     const response = NextResponse.json({
-      message: "Logout successful.",
+      message: "Logout successful",
       success: true,
     });
-    response.cookies.set("token", "", { httpOnly: true, expires: new Date(0) });
+
+    response.cookies.set("token", "", {
+      httpOnly: true,
+      path: "/",
+      expires: new Date(0),
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+    });
 
     return response;
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json(
+      { error: error.message },
+      { status: 500 }
+    );
   }
 }

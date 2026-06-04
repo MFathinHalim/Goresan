@@ -1,76 +1,108 @@
 "use client";
 
-import React, { Suspense, useState } from "react";
-
-import Link from "next/link";
+import React, { useEffect, useState } from "react";
 import axios from "axios";
+import { toast, Toaster } from "react-hot-toast";
 import { useSearchParams } from "next/navigation";
 
-const VerifyEmail = () => {
+export default function VerifyEmail() {
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
 
+  const [email, setEmail] = useState("");
+  const [loading, setLoading] = useState(false);
   const [verified, setVerified] = useState(false);
-  const [error, setError] = useState("");
-  console.log({ token });
 
-  const verifyEmail = async () => {
+  // ======================
+  // AUTO VERIFY (token ada)
+  // ======================
+  const verifyWithToken = async (t: string) => {
     try {
-      const response = await axios.post("/api/users/verifyemail", {
-        token,
+      setLoading(true);
+
+      await axios.post("/api/users/verifyemail", {
+        token: t,
       });
-      if (response.status === 200) {
-        setVerified(true);
-        setError("");
-      } else {
-        setError(response.statusText);
-      }
-    } catch (error: any) {
-      setError(error.response.data.message);
-      console.log(error.response.data);
+
+      setVerified(true);
+      toast.success("Email berhasil diverifikasi");
+      window.location.href = "/login";
+    } catch (e: any) {
+      toast.error(e.response?.data?.message || "Token tidak valid");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (token) {
+      verifyWithToken(token);
+    }
+  }, [token]);
+
+  // ======================
+  // RESEND EMAIL (manual)
+  // ======================
+  const resend = async () => {
+    try {
+      setLoading(true);
+
+      await axios.post("/api/users/resendverification", {
+        email,
+      });
+
+      toast.success("Link verifikasi dikirim ulang");
+    } catch (e: any) {
+      toast.error(e.response?.data?.message || "Gagal kirim email");
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen py-2 bg-gray-50">
-      <div className="w-full max-w-md p-6 bg-white rounded-lg shadow-md text-center space-y-4">
-        <h1 className="text-3xl font-semibold text-gray-800 mb-2">
-          Verify Email
-        </h1>
+    <div
+      className="min-h-[calc(100vh-64px)] flex items-center justify-center px-4"
+    >
+      <Toaster />
 
-        {error && (
-          <div className="text-red-600 bg-red-100 border border-red-400 p-3 rounded-lg">
-            {error}
-          </div>
-        )}
+      {/* ======================
+          MODE 1: TOKEN ADA
+      ====================== */}
+      {token ? (
+        <div className="text-center">
+          {loading && !verified && (
+            <p className="text-xl">Memverifikasi email...</p>
+          )}
 
-        <button
-          onClick={verifyEmail}
-          disabled={verified}
-          className={`w-full px-4 py-2 font-medium text-white rounded-lg ${
-            verified ? "bg-gray-400" : "bg-blue-500 hover:bg-blue-600"
-          } focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50`}
-        >
-          Click here to verify
-        </button>
+          {verified && (
+            <p className="text-xl text-green-600">
+              Email berhasil diverifikasi
+            </p>
+          )}
+        </div>
+      ) : (
+        /* ======================
+           MODE 2: MANUAL RESEND
+        ====================== */
+        <div className="w-full max-w-md text-center">
+          <h1 className="text-5xl mb-8">Verifikasi Email</h1>
 
-        {verified && (
-          <div className="text-green-600 bg-green-100 border border-green-400 p-3 rounded-lg">
-            <h2 className="font-medium">Verified Successfully!</h2>
-            <Link href="/login" className="text-blue-500 hover:underline">
-              Proceed to Login
-            </Link>
-          </div>
-        )}
-      </div>
+          <input
+            className="w-full border-b py-3 mb-6 outline-none"
+            placeholder="email kamu"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+
+          <button
+            onClick={resend}
+            disabled={!email || loading}
+            className="w-full border border-black py-3"
+          >
+            {loading ? "Mengirim..." : "Kirim ulang email verifikasi"}
+          </button>
+        </div>
+      )}
     </div>
-  );
-};
-
-export default function VerifyEmailPage() {
-  return (
-    <Suspense fallback={<p className="flex justify-center items-center min-h-screen">Loading...</p>}>
-      <VerifyEmail />
-    </Suspense>
   );
 }

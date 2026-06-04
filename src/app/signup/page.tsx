@@ -1,139 +1,124 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-
+import React, { useState } from "react";
 import Link from "next/link";
 import axios from "axios";
-import { toast } from "react-hot-toast";
+import { toast, Toaster } from "react-hot-toast";
 import { useRouter } from "next/navigation";
 
-const SignUp = () => {
+const FloatingArt = ({ className, src }: { className: string; src: string }) => (
+  <img
+    src={src}
+    className={`absolute rounded-2xl object-cover border border-black/10 opacity-80 animate-float ${className}`}
+    draggable={false}
+  />
+);
+
+export default function SignUp() {
   const router = useRouter();
 
   const [user, setUser] = useState({
+    username: "",
     email: "",
     password: "",
-    username: "",
   });
-  const [isValidData, setIsValidData] = useState(false);
+
   const [loading, setLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
+  const [sent, setSent] = useState(false);
+
+  const isValid = user.username && user.email && user.password;
 
   const onSignUp = async () => {
     try {
       setLoading(true);
-      const response = await axios.post("/api/users/signup", user);
-      console.log("Sign Up successful", response.data);
 
-      router.push("/login");
-    } catch (error: any) {
-      console.log("Sign up failed");
-      toast.error(error.message);
+      await axios.post("/api/users/signup", user);
+
+      setSent(true);
+      toast.success("Cek email kamu untuk verifikasi");
+
+      setTimeout(() => {
+        router.push("/verify-email");
+      }, 1200);
+    } catch {
+      toast.error("Gagal daftar");
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    setIsValidData(
-      user.email.length > 0 &&
-        user.password.length > 0 &&
-        user.username.length > 0
-    );
-  }, [user]);
-
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 px-4">
-      <div className="w-full max-w-md p-8 space-y-4 bg-white rounded-xl shadow-md">
-        <h1 className="text-2xl font-semibold text-center text-gray-800">
-          {loading ? "Processing..." : "Sign Up"}
-        </h1>
-        <div className="space-y-4">
-          <div>
-            <label
-              htmlFor="username"
-              className="text-sm font-medium text-gray-600"
-            >
-              Username
-            </label>
-            <input
-              id="username"
-              type="text"
-              value={user.username}
-              onChange={(e) =>
-                setUser((prev) => ({ ...prev, username: e.target.value }))
-              }
-              placeholder="Enter your username"
-              className="w-full p-2 mt-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
-            />
-          </div>
+    <div
+      className="min-h-[calc(100vh-64px)] flex items-center justify-center relative overflow-hidden px-4"
+    >
+      {/* decor */}
+      <FloatingArt src="https://i.pinimg.com/1200x/c2/78/78/c278785922d279e360e7e0f9b420ce25.jpg" className="w-72 top-[-60px] left-[-60px] rotate-6" />
+      <FloatingArt src="https://i.pinimg.com/736x/34/1d/47/341d47bd889baad279496b06b0d08686.jpg" className="w-64 bottom-[-40px] left-10 -rotate-6" />
+      <FloatingArt src="https://i.pinimg.com/736x/7d/54/86/7d54865815e8a66f5c74f5a23aa5825c.jpg" className="w-80 top-10 right-[-80px] rotate-3" />
 
-          <div>
-            <label
-              htmlFor="email"
-              className="text-sm font-medium text-gray-600"
-            >
-              Email
-            </label>
-            <input
-              id="email"
-              type="text"
-              value={user.email}
-              onChange={(e) =>
-                setUser((prev) => ({ ...prev, email: e.target.value }))
-              }
-              placeholder="Enter your email"
-              className="w-full p-2 mt-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
-            />
-          </div>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (isValid && !loading) onSignUp();
+        }}
+        className="relative z-10 w-full max-w-md"
+      >
+        <h1 className="text-5xl text-center mb-10">Goresan</h1>
 
-          <div>
-            <label
-              htmlFor="password"
-              className="text-sm font-medium text-gray-600"
-            >
-              Password
-            </label>
-            <div className="relative">
-              <input
-                id="password"
-                type={showPassword ? "text" : "password"}
-                autoComplete="new-password"
-                value={user.password}
-                onChange={(e) =>
-                  setUser((prev) => ({ ...prev, password: e.target.value }))
-                }
-                placeholder="Enter your password"
-                className="w-full p-2 mt-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
-              />
-              <button
-                onClick={() => setShowPassword(!showPassword)}
-                type="button"
-                className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-600"
-              >
-                {showPassword ? "Hide" : "Show"}
-              </button>
-            </div>
-          </div>
-        </div>
+        <input
+          className="w-full border-b py-3 mb-5 outline-none bg-transparent border-purple-700 dark:border-purple-400"
+          placeholder="username"
+          value={user.username}
+          onChange={(e) => setUser((p) => ({ ...p, username: e.target.value }))}
+        />
+
+        <input
+          className="w-full border-b py-3 mb-5 outline-none bg-transparent border-purple-700 dark:border-purple-400"
+          placeholder="email"
+          value={user.email}
+          onChange={(e) => setUser((p) => ({ ...p, email: e.target.value }))}
+        />
+
+        <input
+          type="password"
+          className="w-full border-b py-3 mb-5 outline-none bg-transparent border-purple-700 dark:border-purple-400"
+          placeholder="password"
+          value={user.password}
+          onChange={(e) => setUser((p) => ({ ...p, password: e.target.value }))}
+        />
 
         <button
-          disabled={!isValidData}
-          onClick={onSignUp}
-          className={`w-full p-2 text-white bg-blue-500 rounded-lg ${
-            isValidData ? "hover:bg-blue-600" : "cursor-not-allowed opacity-50"
-          } focus:outline-none`}
+          disabled={!isValid || loading}
+          className="w-full bg-purple-700 dark:bg-purple-400 cursor-pointer dark:hover:bg-purple-700 text-white py-3 rounded-md transition"
         >
-          Sign Up
+          {loading ? "Mengirim..." : "Buat akun"}
         </button>
 
-        <div className="text-center">
-          <Link href="/login" className="text-sm text-blue-500 hover:underline">
-            Visit Login Page
+        {sent && (
+          <p className="text-center text-sm text-gray-500 mt-4">
+            kami sudah kirim link verifikasi ke email kamu
+          </p>
+        )}
+
+        <p className="text-center mt-6">
+          sudah punya akun?{" "}
+          <Link href="/login" className="underline text-purple-700 dark:text-purple-300">
+            masuk
           </Link>
-        </div>
-      </div>
+        </p>
+      </form>
+
+      <style jsx>{`
+        .animate-float {
+          animation: float 7s ease-in-out infinite;
+        }
+        @keyframes float {
+          0% { transform: translateY(0px); }
+          50% { transform: translateY(-25px); }
+          100% { transform: translateY(0px); }
+        }
+      `}</style>
+
+      <Toaster />
     </div>
   );
-};
-
-export default SignUp;
+}

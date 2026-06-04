@@ -4,13 +4,16 @@ import jwt from "jsonwebtoken";
 export const getDataFromToken = (request: NextRequest) => {
   try {
     const token = request.cookies.get("token")?.value || "";
-    const decodedToken = jwt.verify(
+
+    if (!token) throw new Error("No token");
+
+    const decoded: any = jwt.verify(
       token,
       process.env.TOKEN_SECRET!
     );
 
-    return typeof decodedToken === 'string' ? decodedToken : decodedToken.id;
-  } catch (error: any) {
-    throw new Error(error.message);
+    return decoded.id;
+  } catch (err) {
+    throw new Error("Invalid token");
   }
 };

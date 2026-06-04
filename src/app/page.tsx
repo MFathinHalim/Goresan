@@ -1,61 +1,242 @@
 "use client";
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import axios from "axios";
-import toast, { Toaster } from "react-hot-toast";
+
+import { useEffect, useState, useRef, useCallback } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import PostCard from "@/components/Post";
 
 export default function Home() {
   const router = useRouter();
-  const [posts, setPosts] = useState([]);
+  const searchParams = useSearchParams();
+
+  const q = searchParams.get("q") || "";
+
+  const [posts, setPosts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [popularTags, setPopularTags] = useState<string[]>([]);
+  const [sort, setSort] = useState<"terbaru" | "terpopuler">("terbaru");
+
+  const observerRef = useRef<HTMLDivElement>(null);
+  const loadingRef = useRef(false);
+  const pageRef = useRef(1);
+
+  const isSearchMode = !!q;
+
+  // =========================
+  // FETCH POSTS
+  // =========================
+  async function fetchPosts(pageNum: number, replace = false) {
+    if (loadingRef.current) return;
+
+    loadingRef.current = true;
+
+    if (pageNum === 1) setLoading(true);
+    else setLoadingMore(true);
+
+    try {
+      const url = q
+        ? `/api/posts?page=${pageNum}&limit=12&q=${encodeURIComponent(q)}`
+        : `/api/posts?page=${pageNum}&limit=12`;
+
+      const res = await fetch(url);
+      const data = await res.json();
+
+      const result: any[] = data.posts || [];
+
+      if (replace) {
+        setPosts(result);
+
+        const tagCount: Record<string, number> = {};
+        result.forEach(post => {
+          post.tags?.forEach((tag: string) => {
+            if (!tag || tag.toLowerCase() === "nsfw") return;
+            tagCount[tag] = (tagCount[tag] || 0) + 1;
+          });
+        });
+
+        const sorted = Object.entries(tagCount)
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 10)
+          .map(([tag]) => tag);
+
+        setPopularTags(sorted);
+      } else {
+        setPosts(prev => {
+          const existing = new Set(prev.map(p => p._id));
+          const filtered = result.filter(p => !existing.has(p._id));
+          return [...prev, ...filtered];
+        });
+      }
+
+      setHasMore(result.length === 12);
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
+      loadingRef.current = false;
+    }
+  }
+
+  // reset on search change
+  useEffect(() => {
+    pageRef.current = 1;
+    setPosts([]);
+    setPopularTags([]);
+    setHasMore(true);
+
+    fetchPosts(1, true);
+  }, [q]);
+
+  // =========================
+  // INFINITE SCROLL
+  // =========================
+  const handleObserver = useCallback(
+    (entries: IntersectionObserverEntry[]) => {
+      const target = entries[0];
+
+      if (
+        target.isIntersecting &&
+        hasMore &&
+        !loadingMore &&
+        !loading &&
+        !loadingRef.current
+      ) {
+        const next = pageRef.current + 1;
+        pageRef.current = next;
+        fetchPosts(next);
+      }
+    },
+    [hasMore, loadingMore, loading]
+  );
 
   useEffect(() => {
-    fetch("/api/posts")
-      .then(res => res.json())
-      .then(data => {
-        setPosts(data.posts || []);
-        setLoading(false);
-      });
-  }, []);
+    const observer = new IntersectionObserver(handleObserver, {
+      threshold: 0.1,
+    });
 
-  const handleLogout = async () => {
-    try {
-      await axios.get("/api/users/logout");
-      toast.success("Logged out");
-      router.push("/login");
-    } catch (error: any) {
-      toast.error(error.message);
-    }
-  };
+    if (observerRef.current) observer.observe(observerRef.current);
 
+    return () => observer.disconnect();
+  }, [handleObserver]);
+
+  // =========================
+  // SORT
+  // =========================
+  const sortedPosts =
+    sort === "terpopuler"
+      ? [...posts].sort(
+          (a, b) =>
+            (b.like?.users?.length || 0) -
+            (a.like?.users?.length || 0)
+        )
+      : posts;
+
+  // =========================
+  // UI
+  // =========================
   return (
-    <div>
-      <Toaster />
-
-      <nav>
-        <span>Goresan</span>
-        <a href="/upload">Upload</a>
-        <button onClick={handleLogout}>Logout</button>
-      </nav>
-
-      {loading ? (
-        <p>Loading...</p>
-      ) : posts.length === 0 ? (
-        <p>Belum ada karya. <a href="/upload">Upload yang pertama!</a></p>
-      ) : (
-        <div>
-          {posts.map((post: any) => (
-            <div key={post._id}>
-              <a href={`/post/${post.id}`}>
-                <img src={post.img} alt={post.title} width={300} />
-                <p>{post.title}</p>
-                <p>{post.user?.username}</p>
-                <p>{post.like?.users?.length} likes</p>
-              </a>
-            </div>
+    <div
+      className="
+        min-h-[calc(100vh-64px)]
+        bg-white dark:bg-zinc-950
+        text-black dark:text-zinc-100
+      "
+    >
+      {/* ================= TAGS ================= */}
+      {popularTags.length > 0 && (
+        <div className="px-6 pt-4 flex justify-center gap-2 overflow-x-auto scrollbar-hide">
+          {popularTags.map(tag => (
+            <button
+              key={tag}
+              onClick={() =>
+                router.push(`/search?q=${encodeURIComponent(tag)}`)
+              }
+              className="
+                px-4 py-1.5 rounded-full text-sm shrink-0
+                border border-gray-300 dark:border-zinc-700
+                text-gray-600 dark:text-zinc-300
+                hover:border-purple-600 dark:hover:border-purple-300
+                hover:text-purple-700 dark:hover:text-purple-300
+                transition
+              "
+            >
+              #{tag}
+            </button>
           ))}
         </div>
       )}
+
+      {/* ================= SORT ================= */}
+      <div className="px-6 pt-6 pb-4 flex">
+        <div className="flex border border-gray-300 dark:border-zinc-700 rounded-full overflow-hidden">
+          <button
+            onClick={() => setSort("terbaru")}
+            className={`
+              px-5 py-1.5 text-sm transition
+              ${
+                sort === "terbaru"
+                  ? "bg-purple-700 dark:bg-purple-400 text-white"
+                  : "bg-white dark:bg-zinc-900 text-gray-600 dark:text-zinc-300"
+              }
+            `}
+          >
+            Terbaru
+          </button>
+
+          <button
+            onClick={() => setSort("terpopuler")}
+            className={`
+              px-5 py-1.5 text-sm transition
+              ${
+                sort === "terpopuler"
+                  ? "bg-purple-700 dark:bg-purple-400 text-white"
+                  : "bg-white dark:bg-zinc-900 text-gray-600 dark:text-zinc-300"
+              }
+            `}
+          >
+            Terpopuler
+          </button>
+        </div>
+      </div>
+
+      {/* ================= GRID ================= */}
+      <div className="px-6 pb-8">
+        {loading ? (
+          <p className="text-center text-gray-400 dark:text-zinc-500 mt-10">
+            Loading...
+          </p>
+        ) : posts.length === 0 ? (
+          <p className="text-center text-gray-400 dark:text-zinc-500 mt-10">
+            Belum ada karya.
+          </p>
+        ) : (
+          <>
+            <div className="gap-4 columns-1 sm:columns-2 md:columns-3 lg:columns-4">
+              {sortedPosts.map(post => (
+                <PostCard key={post._id} post={post} />
+              ))}
+            </div>
+
+            <div ref={observerRef} className="h-10 mt-4" />
+
+            {loadingMore && (
+              <p className="text-center text-gray-400 dark:text-zinc-500 text-sm mt-2">
+                Memuat lebih banyak...
+              </p>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* scrollbar hide */}
+      <style jsx>{`
+        .scrollbar-hide {
+          scrollbar-width: none;
+        }
+        .scrollbar-hide::-webkit-scrollbar {
+          display: none;
+        }
+      `}</style>
     </div>
   );
 }

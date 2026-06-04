@@ -1,10 +1,15 @@
+@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@300..700&family=Patrick+Hand&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --foreground-rgb: 0, 0, 0;
-  --background-start-rgb: 214, 219, 220;
-  --background-end-rgb: 255, 255, 255;
+  --bg: 248 250 252;
+  --fg: 15 23 42;
+  --accent: 109 40 217;
+}
+
+body{
+  font-family: 'Fredoka', cursive;
 }
 

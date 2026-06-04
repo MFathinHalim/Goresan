@@ -1,4 +1,3 @@
-// src/app/api/posts/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import Posts from "@/controllers/post";
 import { getDataFromToken } from "@/helpers/getDataFromToken";
@@ -15,13 +14,30 @@ const imagekit = new ImageKit({
 const posts = Posts.getInstance();
 
 export async function GET(req: NextRequest) {
+  await connect();
+
+  let allowNSFW = false;
+  try {
+    const userId = getDataFromToken(req);
+    const user = await User.findById(userId).select("age allowNSFW");
+    allowNSFW = (user?.age >= 18) && (user?.allowNSFW === true);
+  } catch {
+    allowNSFW = false;
+  }
+
   const { searchParams } = new URL(req.url);
   const page = parseInt(searchParams.get("page") || "1");
   const limit = parseInt(searchParams.get("limit") || "12");
   const search = searchParams.get("search") || "";
 
   const result = await posts.getData(undefined, page, limit, undefined, search);
-  return NextResponse.json(result);
+  const filtered = allowNSFW
+    ? result.posts
+    : result.posts?.filter((p: any) =>
+        !p.tags?.some((t: string) => t.toLowerCase() === "nsfw")
+      );
+
+  return NextResponse.json({ posts: filtered });
 }
 
 export async function POST(req: NextRequest) {
