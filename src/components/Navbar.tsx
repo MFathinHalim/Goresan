@@ -18,7 +18,7 @@ type ThemeMode = "system" | "light" | "dark";
 export default function Navbar() {
   const router = useRouter();
   const pathname = usePathname();
-  const { user, logout } = useUser();
+  const { user, logout, loading } = useUser();
 
   const [search, setSearch] = useState("");
   const [openMenu, setOpenMenu] = useState(false);
@@ -46,7 +46,6 @@ export default function Navbar() {
     if (q) setSearch(q);
   }, []);
 
-  // reset search input saat pindah halaman
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const q = params.get("q");
@@ -134,9 +133,11 @@ export default function Navbar() {
       </div>
 
       {/* PROFILE / LOGIN */}
-      {user ? (
+      {loading ? (
+        <div className="w-9 h-9 rounded-full bg-zinc-200 dark:bg-zinc-700 animate-pulse shrink-0" />
+      ) : user ? (
         <div className="relative" ref={menuRef}>
-          <button onClick={() => setOpenMenu(!openMenu)}>
+          <button onClick={() => setOpenMenu(!openMenu)} className="flex items-center">
             <img
               src={user.profilePicture || "/default-avatar.png"}
               alt={user.username}
@@ -145,7 +146,7 @@ export default function Navbar() {
           </button>
 
           {openMenu && (
-            <div className="absolute right-0 top-12 w-52 bg-white/80 dark:bg-zinc-900/80 border border-purple-700 dark:border-purple-400 rounded-xl shadow-lg overflow-hidden">
+            <div className="absolute right-0 top-12 w-52 bg-white/80 dark:bg-zinc-900/80 border border-purple-700/60 dark:border-purple-400/60 rounded-xl shadow-lg overflow-hidden">
 
               <div className="px-4 py-3 border-b border-zinc-200 dark:border-purple-400">
                 <p className="font-bold">{user.username}</p>

@@ -138,8 +138,8 @@ export default function SearchContent() {
   return (
     <div
       className="
-        min-h-screen
-        px-6 py-8
+        min-h-[calc(100vh-64px)]
+        px-6
         bg-white dark:bg-zinc-950
         text-black dark:text-zinc-100
       "
@@ -154,21 +154,17 @@ export default function SearchContent() {
         <>
           {/* TAGS */}
           {tags.length > 0 && (
-            <div className="mb-6 flex flex-wrap gap-2">
-              {tags.map((tag) => (
-                <button
-                  key={tag}
-                  onClick={() => goSearch(tag)}
-                  className="
-                    px-4 py-1.5 rounded-full text-sm border transition
-                    border-gray-300 text-gray-600 hover:border-purple-700 hover:text-purple-700
-                    dark:border-zinc-700 dark:text-zinc-300 dark:hover:border-purple-400 dark:hover:text-purple-400
-                  "
-                >
-                  #{tag}
-                </button>
-              ))}
-            </div>
+            <div className="py-4 flex justify-start gap-2 overflow-x-auto scrollbar-none" style={{ scrollbarWidth: "none" }}>
+          {tags.map(tag => (
+            <button
+              key={tag}
+              onClick={() => router.push(`/search?q=${encodeURIComponent(tag)}`)}
+              className="px-4 py-1.5 rounded-full text-sm border border-gray-300 dark:border-zinc-700 whitespace-nowrap shrink-0"
+            >
+              {tag}
+            </button>
+          ))}
+        </div>
           )}
 
           {/* USERS */}

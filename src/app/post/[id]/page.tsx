@@ -94,7 +94,7 @@ export default function PostDetail({ params }: { params: { id: string } }) {
               src={post.img}
               alt={post.title}
               onClick={() => setShowImage(true)}
-              className="w-full cursor-zoom-in hover:opacity-95 transition"
+              className="w-full max-h-[700px] object-cover cursor-zoom-in hover:opacity-95 transition"
             />
 
             {/* DETAIL */}

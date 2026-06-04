@@ -56,7 +56,7 @@ export default function PostCard({ post }: { post: any }) {
         <img
           src={post.img}
           alt={post.title}
-          className="w-full block"
+          className="w-full block max-h-[700px] object-cover"
           crossOrigin="anonymous"
           style={{
             borderBottom: `1px solid ${borderColor}`,

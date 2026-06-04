@@ -211,47 +211,45 @@ export default function ProfileDetails({ params }: { params: { id: string } }) {
       )}
 
       {/* HEADER */}
-      <div className="flex gap-8 px-8 py-10 justify-center items-center">
-        <img
-          src={user.profilePicture || "/default-avatar.png"}
-          className="w-36 h-36 rounded-full object-cover border border-zinc-200 dark:border-zinc-800"
-        />
+<div className="flex flex-col sm:flex-row gap-6 lg:gap-10 px-6 py-8 justify-center items-center sm:items-start">
+  <img
+    src={user.profilePicture || "/default-avatar.png"}
+    alt={user.username}
+    className="w-24 h-24 sm:w-36 sm:h-36 rounded-full object-cover border border-zinc-200 dark:border-zinc-800 shrink-0"
+  />
 
-        <div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-3xl">{user.username}</h1>
+  <div className="flex flex-col items-center sm:items-start text-center sm:text-left">
+    <div className="flex items-center gap-3">
+      <h1 className="text-2xl sm:text-3xl">{user.username}</h1>
+      {isOwner && (
+        <>
+          <button onClick={() => { setEditUsername(user.username || ""); setEditDesc(user.description || ""); setShowEdit(true); }} className="text-purple-700 dark:text-purple-400">
+            <Edit3 size={18} />
+          </button>
+          <button onClick={() => { setSettingsAge(currentUser?.age?.toString() || ""); setSettingsNSFW(currentUser?.allowNSFW || false); setShowSettings(true); }} className="text-purple-700 dark:text-purple-400">
+            <Settings size={18} />
+          </button>
+        </>
+      )}
+    </div>
 
-            {isOwner && (
-              <>
-                <button onClick={() => setShowEdit(true)} className="text-purple-700 dark:text-purple-400">
-                  <Edit3 size={18} />
-                </button>
+    <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mt-1">
+      <Mail size={14} />
+      <span className="truncate max-w-[200px]">{isOwner ? user.email : maskEmail(user.email)}</span>
+    </div>
 
-                <button onClick={() => setShowSettings(true)} className="text-purple-700 dark:text-purple-400">
-                  <Settings size={18} />
-                </button>
-              </>
-            )}
-          </div>
+    {user.description && (
+      <p className="text-gray-600 dark:text-gray-300 mt-2 text-sm max-w-screen lg:w-[30vw]">
+        {user.description}
+      </p>
+    )}
 
-          <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-            <Mail size={14} />
-            <span>{isOwner ? user.email : maskEmail(user.email)}</span>
-          </div>
-
-          {user.description && (
-            <p className="text-gray-600 dark:text-gray-300 mt-2">
-              {user.description}
-            </p>
-          )}
-
-          <div className="flex gap-6 mt-3 text-purple-700 dark:text-purple-400">
-            <div>{posts.length} Posts</div>
-            <div>{totalLikes} Likes</div>
-          </div>
-        </div>
-      </div>
-
+    <div className="flex gap-6 mt-3 text-purple-700 dark:text-purple-400 text-sm">
+      <div>{posts.length} Posts</div>
+      <div>{totalLikes} Likes</div>
+    </div>
+  </div>
+</div>
       {/* TABS */}
       {isOwner && (
         <div className="flex justify-center gap-8 border-b border-zinc-200 dark:border-zinc-800 mx-6">
