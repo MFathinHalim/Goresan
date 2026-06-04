@@ -127,15 +127,15 @@ export default function Home() {
   return (
     <div className="min-h-[calc(100vh-64px)] bg-white dark:bg-zinc-950 text-black dark:text-zinc-100">
       {/* TAGS */}
-      {popularTags.length > 0 && (
-        <div className="px-6 pt-4 flex justify-center gap-2 overflow-x-auto">
+     {popularTags.length > 0 && (
+        <div className="px-6 pt-4 flex justify-start gap-2 overflow-x-auto scrollbar-none" style={{ scrollbarWidth: "none" }}>
           {popularTags.map(tag => (
             <button
               key={tag}
               onClick={() => router.push(`/search?q=${encodeURIComponent(tag)}`)}
-              className="px-4 py-1.5 rounded-full text-sm border border-gray-300 dark:border-zinc-700"
+              className="px-4 py-1.5 rounded-full text-sm border border-gray-300 dark:border-zinc-700 whitespace-nowrap shrink-0"
             >
-              #{tag}
+              {tag}
             </button>
           ))}
         </div>
