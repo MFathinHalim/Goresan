@@ -4,6 +4,7 @@ import { getDataFromToken } from "@/helpers/getDataFromToken";
 import User from "@/models/userModel";
 import ImageKit from "imagekit";
 import { connect } from "@/dbConfig/dbConfig";
+import { detectNSFW } from "@/helpers/nsfwDetector";
 
 const imagekit = new ImageKit({
   publicKey: process.env.IMAGEKIT_PUBLIC_KEY!,
@@ -58,6 +59,15 @@ export async function POST(req: NextRequest) {
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
+
+    const isNSFW = await detectNSFW(
+      buffer,
+      file.type
+    );
+    
+    if (isNSFW && !tags.includes("nsfw")) {
+      tags.push("nsfw");
+    }
     const uploaded = await imagekit.upload({
       file: buffer,
       fileName: file.name,
@@ -66,7 +76,8 @@ export async function POST(req: NextRequest) {
 
     const post = await posts.posting(title, desc, uploaded.url, tags, user);
     return NextResponse.json({ post }, { status: 201 });
-  } catch {
+  } catch (error) {
+    console.error("Error creating post:", error);
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 }

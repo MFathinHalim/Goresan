@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@huggingface/inference": "^4.13.18",
     "axios": "^1.6.8",
     "bcryptjs": "^2.4.3",
     "imagekit": "^6.0.0",
