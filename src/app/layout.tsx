@@ -12,7 +12,7 @@ export const metadata: Metadata = {
   description:
     "Goresan adalah platform untuk berbagi karya seni, tulisan, dan inspirasi.",
   icons: {
-    icon: "/icon.png",
+    icon: "/icon.ico",
   },
 };
 
@@ -23,7 +23,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-        <link rel="icon" type="image/x-icon" href="/icon.png" />
+        <link rel="icon" type="image/x-icon" href="/icon.ico" />
       <body className="bg-white dark:bg-zinc-900 dark:text-zinc-100">
         <UserProvider>
           <Navbar />
