@@ -48,6 +48,12 @@ const userSchema = new mongoose.Schema({
     type: Boolean,
     default: false,
   },
+  interactions: [
+    {
+      tag: { type: String, lowercase: true },
+      score: { type: Number, default: 0 }
+    }
+  ],
 
   forgotPasswordToken: String,
   forgotPasswordTokenExpiry: Date,

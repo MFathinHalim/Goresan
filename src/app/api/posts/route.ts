@@ -6,6 +6,7 @@ import ImageKit from "imagekit";
 import { connect } from "@/dbConfig/dbConfig";
 import { detectNSFW } from "@/helpers/nsfwDetector";
 import { detectAIImage } from "@/helpers/aiDetector";
+import Post from "@/models/postModel";
 
 const imagekit = new ImageKit({
   publicKey: process.env.IMAGEKIT_PUBLIC_KEY!,
@@ -14,46 +15,76 @@ const imagekit = new ImageKit({
 });
 
 const posts = Posts.getInstance();
-
 export async function GET(req: NextRequest) {
   await connect();
 
   let allowNSFW = false;
+  let userId: string | null = null;
+  let userInteractions: any[] = [];
+
+  // Ambil data user yang sedang login jika ada
   try {
-    const userId = getDataFromToken(req);
-    const user = await User.findById(userId).select("age allowNSFW");
+    userId = getDataFromToken(req);
+    const user = await User.findById(userId).select("age allowNSFW interactions");
     allowNSFW = (user?.age >= 18) && (user?.allowNSFW === true);
+    userInteractions = user?.interactions || [];
   } catch {
     allowNSFW = false;
   }
 
   const { searchParams } = new URL(req.url);
-  const page = parseInt(searchParams.get("page") || "1");
-  const limit = parseInt(searchParams.get("limit") || "12");
-  const search = searchParams.get("search") || "";
-  
-  // Mengambil query param allowedAI (default: false jika tidak diisi atau bukan "true")
   const allowedAI = searchParams.get("allowedAI") === "true";
 
-  const result = await posts.getData(undefined, page, limit, undefined, search);
+  // 1. Ambil 3 tag teratas yang paling disukai user (skor tertinggi)
+  const favoriteTags = userInteractions
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 3)
+    .map(i => i.tag);
+
+  // 2. Bangun Query Filter Dasar (Mengikuti aturan NSFW & AI sebelumnya)
+  const matchFilter: any = {};
   
-  // 1. Filter untuk NSFW
-  let filtered = allowNSFW
-    ? result.posts
-    : result.posts?.filter((p: any) =>
-        !p.tags?.some((t: string) => t.toLowerCase() === "nsfw")
-      );
-  
-  // 2. Filter untuk AI (Hanya disaring jika allowedAI bernilai false)
+  if (!allowNSFW) {
+    matchFilter.tags = { ...matchFilter.tags, $nin: [/^nsfw$/i] };
+  }
   if (!allowedAI) {
-    filtered = filtered?.filter((p: any) =>
-      !p.tags?.some((t: string) => t.toLowerCase() === "ai")
-    );
+    if (!matchFilter.tags) matchFilter.tags = {};
+    matchFilter.tags.$nin = [...(matchFilter.tags.$nin || []), /^ai$/i];
   }
 
-  // Tambahkan data allowNSFW dan allowedAI ke dalam response JSON (opsional, agar frontend tahu statusnya)
+  // 3. Jalankan Aggregation Pipeline untuk Algoritma Rekomendasi Random
+  let pipeline: any[] = [
+    { $match: matchFilter } // Saring dulu NSFW dan AI agar tidak bocor
+  ];
+
+  if (favoriteTags.length > 0) {
+    // Jika user punya minat, gunakan $addFields untuk memberikan nilai "bobot" 
+    // pada postingan yang memiliki tag kesukaan mereka
+    pipeline.push({
+      $addFields: {
+        isFavorite: {
+          $cond: {
+            if: { $gt: [{ $size: { $setIntersection: ["$tags", favoriteTags] } }, 0] },
+            then: 1, // Beri tanda jika ada tag yang cocok
+            else: 0
+          }
+        }
+      }
+    });
+    
+    // Urutkan berdasarkan konten favorit dulu, lalu sisanya di-random
+    pipeline.push({ $sort: { isFavorite: -1 } });
+  }
+
+  // Ambil sampel secara acak dari database agar bervariasi (misal limit 12)
+  // Menggunakan $sample membuat hasilnya selalu terasa baru dan "random" bagi user
+  pipeline.push({ $sample: { size: 12 } });
+
+  // Jalankan query aggregation langsung ke Model Post Mongoose kamu
+  const randomPosts = await Post.aggregate(pipeline);
+
   return NextResponse.json({ 
-    posts: filtered, 
+    posts: randomPosts, 
     allowNSFW,
     allowedAI
   });
