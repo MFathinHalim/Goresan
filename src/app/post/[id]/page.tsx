@@ -3,7 +3,7 @@
 import PostCard from "@/components/Post";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
-import { Heart, Share2 } from "lucide-react";
+import { Heart, Share2, EyeOff } from "lucide-react"; // Tambahkan EyeOff untuk indikator visual blur
 import { useUser } from "@/context/userContext";
 
 export default function PostDetail({ params }: { params: { id: string } }) {
@@ -32,6 +32,12 @@ export default function PostDetail({ params }: { params: { id: string } }) {
         setLikeCount(data.likeCount);
       });
   }, [params.id]);
+
+  // LOGIKA PENGECEKAN BLUR NSFW
+  const isPostNSFW = post?.tags?.some((t: string) => t.toLowerCase() === "nsfw");
+  const isUserAllowedNSFW = user && (user.age >= 18) && (user.allowNSFW === true);
+  // Gambar diblur jika postingan NSFW dan pengguna TIDAK diizinkan melihatnya
+  const shouldBlur = isPostNSFW && !isUserAllowedNSFW;
 
   async function handleLike() {
     if (!user) { toast.error("Login dulu yuk!"); return; }
@@ -75,27 +81,46 @@ export default function PostDetail({ params }: { params: { id: string } }) {
 
       {/* AMBIENT BACKGROUND */}
       <div className="relative w-full overflow-hidden" style={{ minHeight: "420px" }}>
+        {!shouldBlur && (
         <div
           className="absolute inset-0 scale-110 opacity-40"
           style={{
             backgroundImage: `url(${post.img})`,
             backgroundSize: "cover",
             backgroundPosition: "center",
+            // Jika harus diblur, tambah kekuatan blur dasarnya agar konten tidak bocor lewat ambient background
             filter: "blur(40px)",
           }}
-        />
+        />)}
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-white dark:to-[#0B0B10]" />
 
         <div className="relative z-10 max-w-4xl mx-auto px-4 md:px-8 pt-8 pb-0">
-          <div className="border rounded-md overflow-hidden border-purple-700/50 dark:border-purple-400/30">
+          <div className="relative border rounded-md overflow-hidden border-purple-700/50 dark:border-purple-400/30 bg-zinc-100 dark:bg-zinc-950">
 
-            {/* IMAGE */}
-            <img
-              src={post.img}
-              alt={post.title}
-              onClick={() => setShowImage(true)}
-              className="w-full max-h-[700px] object-cover cursor-zoom-in hover:opacity-95 transition"
-            />
+            {/* KONTINER GAMBAR UTAMA */}
+            <div className="relative w-full overflow-hidden flex items-center justify-center select-none">
+              <img
+                src={post.img}
+                alt={post.title}
+                // Klik untuk zoom dinonaktifkan/tidak berefek jika gambar sedang disensor blur
+                onClick={() => !shouldBlur && setShowImage(true)}
+                className={`w-full max-h-[700px] object-cover transition duration-300 ${
+                  shouldBlur 
+                    ? "blur-3xl scale-105 pointer-events-none" 
+                    : "cursor-zoom-in hover:opacity-95"
+                }`}
+              />
+              
+              {/* Overlay Text Indikator Sensor jika terkena Blur */}
+              {shouldBlur && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/20 text-white p-4 text-center backdrop-blur-sm">
+                  <EyeOff size={36} className="mb-2 text-zinc-200 drop-shadow" />
+                  <p className="text-sm md:text-base font-semibold bg-black/60 px-4 py-2 rounded-xl backdrop-blur-md border border-white/10 shadow-lg">
+                    Konten ini disensor karena mengandung unsur sensitif/NSFW.
+                  </p>
+                </div>
+              )}
+            </div>
 
             {/* DETAIL */}
             <div className="p-4 md:p-6 bg-white dark:bg-zinc-900">
@@ -104,10 +129,8 @@ export default function PostDetail({ params }: { params: { id: string } }) {
               <div className="flex flex-wrap justify-between items-start gap-3">
                 <h1 className="text-2xl md:text-3xl font-bold flex-1 min-w-0">{post.title}</h1>
 
-                {/* ACTIONS — horizontal, wrap kalau perlu */}
+                {/* ACTIONS */}
                 <div className="flex items-center gap-2 shrink-0">
-
-                  {/* LIKE */}
                   {user ? (
                     <button
                       disabled={liking}
@@ -127,7 +150,6 @@ export default function PostDetail({ params }: { params: { id: string } }) {
                     </span>
                   )}
 
-                  {/* SHARE */}
                   <button
                     onClick={handleShare}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-gray-300 dark:border-zinc-700 hover:bg-gray-50 dark:hover:bg-zinc-800 transition text-sm"
@@ -160,15 +182,20 @@ export default function PostDetail({ params }: { params: { id: string } }) {
               {/* TAGS */}
               {post.tags?.length > 0 && (
                 <div className="mt-4 flex flex-wrap gap-2">
-                  {post.tags.map((tag: string) => (
-                    <a
-                      key={tag}
-                      href={`/search?q=${encodeURIComponent(tag)}`}
-                      className="px-3 py-1 rounded-full text-xs md:text-sm border border-gray-300 dark:border-zinc-700 text-gray-600 dark:text-gray-300 hover:border-purple-500 hover:text-purple-500 transition no-underline"
-                    >
-                      #{tag}
-                    </a>
-                  ))}
+                  {post.tags.map((tag: string) => {
+                    const isAI = tag.toLowerCase() === "ai";
+                    const targetHref = isAI ? "/artificial" : `/search?q=${encodeURIComponent(tag)}`;
+
+                    return (
+                      <a
+                        key={tag}
+                        href={targetHref}
+                        className="px-3 py-1 rounded-full text-xs md:text-sm border border-gray-300 dark:border-zinc-700 text-gray-600 dark:text-gray-300 hover:border-purple-500 hover:text-purple-500 transition no-underline"
+                      >
+                        #{tag}
+                      </a>
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -179,18 +206,16 @@ export default function PostDetail({ params }: { params: { id: string } }) {
       {/* RELATED */}
       <div className="mx-auto px-4 md:px-8 mt-8 pb-10">
         {relatedPosts.length > 0 && (
-          <>
-            <div className="columns-2 sm:columns-3 md:columns-4 lg:columns-5 gap-3">
-              {relatedPosts.map((p: any) => (
-                <PostCard key={p._id} post={p} />
-              ))}
-            </div>
-          </>
+          <div className="columns-2 sm:columns-3 md:columns-4 lg:columns-5 gap-3">
+            {relatedPosts.map((p: any) => (
+              <PostCard key={p._id} post={p} />
+            ))}
+          </div>
         )}
       </div>
 
       {/* IMAGE MODAL */}
-      {showImage && (
+      {showImage && !shouldBlur && (
         <div
           className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-6"
           onClick={() => setShowImage(false)}

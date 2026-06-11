@@ -5,6 +5,7 @@ import User from "@/models/userModel";
 import ImageKit from "imagekit";
 import { connect } from "@/dbConfig/dbConfig";
 import { detectNSFW } from "@/helpers/nsfwDetector";
+import { detectAIImage } from "@/helpers/aiDetector";
 
 const imagekit = new ImageKit({
   publicKey: process.env.IMAGEKIT_PUBLIC_KEY!,
@@ -30,15 +31,32 @@ export async function GET(req: NextRequest) {
   const page = parseInt(searchParams.get("page") || "1");
   const limit = parseInt(searchParams.get("limit") || "12");
   const search = searchParams.get("search") || "";
+  
+  // Mengambil query param allowedAI (default: false jika tidak diisi atau bukan "true")
+  const allowedAI = searchParams.get("allowedAI") === "true";
 
   const result = await posts.getData(undefined, page, limit, undefined, search);
-  const filtered = allowNSFW
+  
+  // 1. Filter untuk NSFW
+  let filtered = allowNSFW
     ? result.posts
     : result.posts?.filter((p: any) =>
         !p.tags?.some((t: string) => t.toLowerCase() === "nsfw")
       );
+  
+  // 2. Filter untuk AI (Hanya disaring jika allowedAI bernilai false)
+  if (!allowedAI) {
+    filtered = filtered?.filter((p: any) =>
+      !p.tags?.some((t: string) => t.toLowerCase() === "ai")
+    );
+  }
 
-  return NextResponse.json({ posts: filtered });
+  // Tambahkan data allowNSFW dan allowedAI ke dalam response JSON (opsional, agar frontend tahu statusnya)
+  return NextResponse.json({ 
+    posts: filtered, 
+    allowNSFW,
+    allowedAI
+  });
 }
 
 export async function POST(req: NextRequest) {
@@ -64,9 +82,16 @@ export async function POST(req: NextRequest) {
       buffer,
       file.type
     );
-    
+    const isAI = await detectAIImage(
+      buffer,
+      file.type
+    );
+    console.log(isAI);
     if (isNSFW && !tags.includes("nsfw")) {
       tags.push("nsfw");
+    }
+    if (isAI && !tags.includes("ai")) {
+      tags.push("ai");
     }
     const uploaded = await imagekit.upload({
       file: buffer,

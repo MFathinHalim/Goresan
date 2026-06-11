@@ -36,8 +36,8 @@ export default function Home() {
 
     try {
       const url = q
-        ? `/api/posts?page=${pageNum}&limit=12&q=${encodeURIComponent(q)}`
-        : `/api/posts?page=${pageNum}&limit=12`;
+        ? `/api/posts?page=${pageNum}&limit=12&q=${encodeURIComponent(q)}&allowedAI=true`
+        : `/api/posts?page=${pageNum}&limit=12&allowedAI=true`;
 
       const res = await fetch(url);
       const data = await res.json();
@@ -132,13 +132,7 @@ export default function Home() {
           {popularTags.map(tag => (
             <button
               key={tag}
-              onClick={() => {
-                if (tag.toLowerCase() === "ai") {
-                  router.push("/artificial");
-                } else {
-                  router.push(`/search?q=${encodeURIComponent(tag)}`);
-                }
-              }}              
+              onClick={() => router.push(`/search?q=${encodeURIComponent(tag)}`)}
               className="px-4 py-1.5 rounded-full text-sm border border-gray-300 dark:border-zinc-700 whitespace-nowrap shrink-0"
             >
               {tag}

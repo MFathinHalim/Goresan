@@ -23,7 +23,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
         allowNSFW = false;
       }
       if (!allowNSFW) {
-        return NextResponse.json({ error: "Konten ini dibatasi untuk usia 18+" }, { status: 403 });
+        NextResponse.json({ error: "Konten ini dibatasi untuk usia 18+" }, { status: 403 });
       }
     }
 
