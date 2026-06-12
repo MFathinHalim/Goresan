@@ -7,6 +7,14 @@ import { connect } from "@/dbConfig/dbConfig";
 import { detectNSFW } from "@/helpers/nsfwDetector";
 import { detectAIImage } from "@/helpers/aiDetector";
 import Post from "@/models/postModel";
+import { LRUCache } from "lru-cache";
+import sharp from "sharp";
+
+// 1. INISIALISASI RATE LIMITER (Maksimal 3 upload per 1 menit per User ID)
+const uploadRateLimiter = new LRUCache<string, number>({
+  max: 500,         // Kapasitas penyimpanan untuk 500 user aktif
+  ttl: 1000 * 60,   // Reset hitungan setiap 1 menit (60.000 ms)
+});
 
 const imagekit = new ImageKit({
   publicKey: process.env.IMAGEKIT_PUBLIC_KEY!,
@@ -15,6 +23,7 @@ const imagekit = new ImageKit({
 });
 
 const posts = Posts.getInstance();
+
 export async function GET(req: NextRequest) {
   await connect();
 
@@ -26,7 +35,7 @@ export async function GET(req: NextRequest) {
   try {
     userId = getDataFromToken(req);
     const user = await User.findById(userId).select("age allowNSFW interactions");
-    allowNSFW = (user?.age >= 18) && (user?.allowNSFW === true);
+    allowNSFW = user && user.age >= 18 && user.allowNSFW === true;
     userInteractions = user?.interactions || [];
   } catch {
     allowNSFW = false;
@@ -77,7 +86,6 @@ export async function GET(req: NextRequest) {
   }
 
   // Ambil sampel secara acak dari database agar bervariasi (misal limit 12)
-  // Menggunakan $sample membuat hasilnya selalu terasa baru dan "random" bagi user
   pipeline.push({ $sample: { size: 12 } });
 
   // Jalankan query aggregation langsung ke Model Post Mongoose kamu
@@ -97,6 +105,21 @@ export async function POST(req: NextRequest) {
     const user = await User.findById(userId).select("-password");
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+    // =========================================================
+    // VERIFIKASI RATE LIMIT (Mencegah Serangan Bot/Skrip)
+    // =========================================================
+    const currentUploadCount = uploadRateLimiter.get(userId.toString()) || 0;
+
+    if (currentUploadCount >= 3) {
+      return NextResponse.json(
+        { error: "Aktivitas upload terlalu cepat. Silakan tunggu 1 menit lagi." },
+        { status: 429 } // 429: Too Many Requests
+      );
+    }
+    // Tambah log hitungan untuk user ini
+    uploadRateLimiter.set(userId.toString(), currentUploadCount + 1);
+    // =========================================================
+
     const formData = await req.formData();
     const title = formData.get("title") as string;
     const desc = formData.get("desc") as string;
@@ -107,26 +130,35 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Title dan gambar wajib diisi" }, { status: 400 });
     }
 
-    const buffer = Buffer.from(await file.arrayBuffer());
+    const rawBuffer = Buffer.from(await file.arrayBuffer());
 
-    const isNSFW = await detectNSFW(
-      buffer,
-      file.type
-    );
-    const isAI = await detectAIImage(
-      buffer,
-      file.type
-    );
-    console.log(isAI);
-    if (isNSFW && !tags.includes("nsfw")) {
+    // =========================================================
+    // OPTIMISASI GAMBAR SISI SERVER (Mengecilkan Ukuran File)
+    // =========================================================
+    // Mengubah format gambar ke WebP dan membatasi dimensi agar hemat storage ImageKit
+    const optimizedBuffer = await sharp(rawBuffer)
+      .resize({ width: 2000, height: 2000, fit: "inside", withoutEnlargement: true }) // Batasi resolusi maksimal tanpa merusak aspek rasio asli
+      .webp({ quality: 82 }) // Mengubah file menjadi WebP berkualitas tinggi namun berukuran kecil
+      .toBuffer();
+    // =========================================================
+
+    // Proses deteksi menggunakan buffer yang sudah dioptimalkan (lebih cepat)
+    const isNSFW = await detectNSFW(optimizedBuffer, "image/webp");
+    const isAI = await detectAIImage(optimizedBuffer, "image/webp");
+    
+    console.log("AI Detected Status:", isAI);
+
+    if (isNSFW && !tags.some(t => t.toLowerCase() === "nsfw")) {
       tags.push("nsfw");
     }
-    if (isAI && !tags.includes("ai")) {
+    if (isAI && !tags.some(t => t.toLowerCase() === "ai")) {
       tags.push("ai");
     }
+
+    // Lempar file WebP hasil kompresi ke Cloud ImageKit
     const uploaded = await imagekit.upload({
-      file: buffer,
-      fileName: file.name,
+      file: optimizedBuffer,
+      fileName: `${Date.now()}_goresan.webp`, // Disimpan dalam ekstensi .webp
       folder: "/goresan",
     });
 
@@ -134,6 +166,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ post }, { status: 201 });
   } catch (error) {
     console.error("Error creating post:", error);
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: "Server Error" }, { status: 500 });
   }
 }

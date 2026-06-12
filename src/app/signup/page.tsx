@@ -12,8 +12,12 @@ export default function SignUp() {
   const [user, setUser] = useState({ username: "", email: "", password: "" });
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
+  
+  // STATE BARU UNTUK CHECKBOX KETENTUAN LAYANAN
+  const [agreed, setAgreed] = useState(false);
 
-  const isValid = user.username && user.email && user.password;
+  // VALIDASI DIPERKETAT: Harus mengisi semua field DAN menyetujui ketentuan
+  const isValid = user.username && user.email && user.password && agreed;
 
   async function onSignUp() {
     try {
@@ -38,6 +42,7 @@ export default function SignUp() {
           src="https://images2.alphacoders.com/120/1209113.jpg"
           draggable={false}
           className="absolute inset-0 w-full h-full object-cover"
+          alt="Latar belakang kreatif"
         />
         <div className="absolute inset-0 bg-gradient-to-r from-black/10 via-transparent to-white dark:to-zinc-950" />
         <div className="absolute bottom-10 left-8 z-10">
@@ -72,7 +77,7 @@ export default function SignUp() {
                 value={user.username}
                 onChange={e => setUser(p => ({ ...p, username: e.target.value }))}
                 placeholder="username kamu"
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-zinc-700 bg-white/60 dark:bg-zinc-900/60 backdrop-blur outline-none focus:border-purple-500 text-sm transition placeholder:text-gray-300"
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-zinc-700 bg-white/60 dark:bg-zinc-900/60 backdrop-blur outline-none focus:border-purple-500 text-sm transition placeholder:text-gray-300 text-black dark:text-white"
               />
             </div>
 
@@ -83,7 +88,7 @@ export default function SignUp() {
                 value={user.email}
                 onChange={e => setUser(p => ({ ...p, email: e.target.value }))}
                 placeholder="email@kamu.com"
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-zinc-700 bg-white/60 dark:bg-zinc-900/60 backdrop-blur outline-none focus:border-purple-500 text-sm transition placeholder:text-gray-300"
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-zinc-700 bg-white/60 dark:bg-zinc-900/60 backdrop-blur outline-none focus:border-purple-500 text-sm transition placeholder:text-gray-300 text-black dark:text-white"
               />
             </div>
 
@@ -94,15 +99,37 @@ export default function SignUp() {
                 value={user.password}
                 onChange={e => setUser(p => ({ ...p, password: e.target.value }))}
                 placeholder="••••••••"
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-zinc-700 bg-white/60 dark:bg-zinc-900/60 backdrop-blur outline-none focus:border-purple-500 text-sm transition placeholder:text-gray-300"
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-zinc-700 bg-white/60 dark:bg-zinc-900/60 backdrop-blur outline-none focus:border-purple-500 text-sm transition placeholder:text-gray-300 text-black dark:text-white"
               />
+            </div>
+
+            {/* KONTEN BARU: CHECKLIST KETENTUAN LAYANAN */}
+            <div className="flex items-start gap-3 mt-1 select-none">
+              <input
+                type="checkbox"
+                id="terms"
+                checked={agreed}
+                onChange={e => setAgreed(e.target.checked)}
+                className="mt-0.5 w-4 h-4 accent-purple-600 rounded border-gray-300 dark:border-zinc-700 cursor-pointer shrink-0"
+              />
+              <label htmlFor="terms" className="text-xs leading-normal text-gray-500 dark:text-zinc-400 cursor-pointer">
+                Dengan membuat akun ini, saya menyetujui{" "}
+                <Link href="/terms" className="text-purple-700 dark:text-purple-400 font-medium hover:underline">
+                  Ketentuan Layanan
+                </Link>{" "}
+                dan{" "}
+                <Link href="/terms" className="text-purple-700 dark:text-purple-400 font-medium hover:underline">
+                  Kebijakan Privasi
+                </Link>{" "}
+                yang berlaku di Goresan.
+              </label>
             </div>
 
             <button
               disabled={!isValid || loading || sent}
-              className="mt-2 w-full py-3 bg-purple-700 dark:bg-purple-500 text-white text-sm rounded-xl hover:bg-purple-800 dark:hover:bg-purple-600 disabled:opacity-30 transition font-medium"
+              className="mt-2 w-full py-3 bg-purple-700 dark:bg-purple-500 text-white text-sm rounded-xl hover:bg-purple-800 dark:hover:bg-purple-600 disabled:opacity-30 transition font-medium shadow-lg shadow-purple-700/10 dark:shadow-purple-500/5"
             >
-              {loading ? "Membuat akun..." : sent ? "Email terkirim ✓" : "Buat akun"}
+              {loading ? "Membuat akun..." : sent ? "Email terkirim" : "Buat akun"}
             </button>
 
             {sent && (
@@ -126,6 +153,7 @@ export default function SignUp() {
             src="https://wallpaperaccess.com/full/1619146.jpg"
             draggable={false}
             className="w-full h-full object-cover"
+            alt="Sampul seluler"
           />
           <div className="absolute inset-0 bg-gradient-to-b from-transparent to-white dark:to-zinc-950" />
         </div>
