@@ -49,7 +49,7 @@ export default function PostCard({ post }: { post: any }) {
 
   return (
     <a
-      href={`/post/${post.id}`}
+      href={`/post/${post._id}`}
       className="block mb-3 border rounded-md border-purple-700 dark:border-purple-400/50 break-inside-avoid no-underline text-black"
     >
       <div className="rounded-t-md overflow-hidden">
