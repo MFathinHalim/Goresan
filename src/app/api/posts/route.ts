@@ -9,19 +9,27 @@ import { detectAIImage } from "@/helpers/aiDetector";
 import Post from "@/models/postModel";
 import { LRUCache } from "lru-cache";
 
-// 1. INISIALISASI RATE LIMITER (Maksimal 3 upload per 1 menit per User ID)
-const uploadRateLimiter = new LRUCache<string, number>({
-  max: 500,         // Kapasitas penyimpanan untuk 500 user aktif
-  ttl: 1000 * 60,   // Reset hitungan setiap 1 menit (60.000 ms)
-});
+// FIX 1: Paksa Next.js agar tidak menyentuh file ini sebagai static page saat build
+export const dynamic = "force-dynamic";
 
-const imagekit = new ImageKit({
-  publicKey: process.env.IMAGEKIT_PUBLIC_KEY!,
-  privateKey: process.env.IMAGEKIT_PRIVATE_KEY!,
-  urlEndpoint: process.env.IMAGEKIT_URL_ENDPOINT!,
-});
+// FIX 2: Ambil global cache singleton agar LRUCache tidak ter-reset setiap kali API di-hit di Vercel
+const globalForCache = global as unknown as { uploadRateLimiter: LRUCache<string, number> };
+if (!globalForCache.uploadRateLimiter) {
+  globalForCache.uploadRateLimiter = new LRUCache<string, number>({
+    max: 500,
+    ttl: 1000 * 60,
+  });
+}
+const uploadRateLimiter = globalForCache.uploadRateLimiter;
 
-const posts = Posts.getInstance();
+// Fungsi pembantu untuk membuat instance ImageKit saat runtime
+function getImageKitInstance() {
+  return new ImageKit({
+    publicKey: process.env.IMAGEKIT_PUBLIC_KEY!,
+    privateKey: process.env.IMAGEKIT_PRIVATE_KEY!,
+    urlEndpoint: process.env.IMAGEKIT_URL_ENDPOINT!,
+  });
+}
 
 export async function GET(req: NextRequest) {
   await connect();
@@ -95,7 +103,7 @@ export async function POST(req: NextRequest) {
     const user = await User.findById(userId).select("-password");
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    // VERIFIKASI RATE LIMIT (Mencegah Serangan Bot/Skrip)
+    // VERIFIKASI RATE LIMIT
     const currentUploadCount = uploadRateLimiter.get(userId.toString()) || 0;
 
     if (currentUploadCount >= 3) {
@@ -116,10 +124,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Title dan gambar wajib diisi" }, { status: 400 });
     }
 
-    // Ambil raw buffer asli komponen gambar tanpa intervensi library pihak ketiga
     const rawBuffer = Buffer.from(await file.arrayBuffer());
 
-    // Proses deteksi AI & NSFW berjalan dengan tipe asli file bawaan browser
     const isNSFW = await detectNSFW(rawBuffer, file.type);
     const isAI = await detectAIImage(rawBuffer, file.type);
 
@@ -130,13 +136,15 @@ export async function POST(req: NextRequest) {
       tags.push("ai");
     }
 
-    // Mengunggah file langsung ke ImageKit secara aman
+    // Inisialisasi ImageKit aman di dalam runtime fungsi
+    const imagekit = getImageKitInstance();
     const uploaded = await imagekit.upload({
       file: rawBuffer,
       fileName: `${Date.now()}_${file.name.replace(/\s+/g, "_")}`,
       folder: "/goresan",
     });
 
+    const posts = Posts.getInstance();
     const post = await posts.posting(title, desc, uploaded.url, tags, user);
     return NextResponse.json({ post }, { status: 201 });
   } catch (error) {
