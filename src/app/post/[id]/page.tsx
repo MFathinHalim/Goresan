@@ -3,7 +3,7 @@
 import PostCard from "@/components/Post";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
-import { Heart, Share2, EyeOff } from "lucide-react"; // Tambahkan EyeOff untuk indikator visual blur
+import { Heart, Share2, EyeOff, Flag } from "lucide-react"; // Tambahkan icon Flag
 import { useUser } from "@/context/userContext";
 
 export default function PostDetail({ params }: { params: { id: string } }) {
@@ -14,6 +14,7 @@ export default function PostDetail({ params }: { params: { id: string } }) {
   const [liked, setLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(0);
   const [liking, setLiking] = useState(false);
+  const [reporting, setReporting] = useState(false); // State untuk loading report
 
   useEffect(() => {
     fetch("/api/posts")
@@ -36,7 +37,6 @@ export default function PostDetail({ params }: { params: { id: string } }) {
   // LOGIKA PENGECEKAN BLUR NSFW
   const isPostNSFW = post?.tags?.some((t: string) => t.toLowerCase() === "nsfw");
   const isUserAllowedNSFW = user && (user.age >= 18) && (user.allowNSFW === true);
-  // Gambar diblur jika postingan NSFW dan pengguna TIDAK diizinkan melihatnya
   const shouldBlur = isPostNSFW && !isUserAllowedNSFW;
 
   async function handleLike() {
@@ -72,6 +72,64 @@ export default function PostDetail({ params }: { params: { id: string } }) {
     } catch {}
   }
 
+  // FUNGSI UNTUK MENANGANI REPORT
+  async function handleReport() {
+    if (!user) {
+      toast.error("Login dulu yuk untuk melapor!");
+      return;
+    }
+
+    const reasonPrompt = prompt(
+      "Pilih alasan laporan (Ketik nomornya):\n" +
+      "1. Konten mengandung NSFW tapi belum ditag\n" +
+      "2. Gambar ini AMAN (Bukan NSFW / AI salah deteksi)\n" +
+      "3. Gambar ini buatan MANUSIA (AI salah deteksi)\n" +
+      "4. Spam / Mengganggu\n" +
+      "5. Lainnya"
+    );
+
+    if (!reasonPrompt) return;
+
+    let reason = "";
+    let customReason = "";
+
+    if (reasonPrompt === "1") reason = "nsfw_unmarked";
+    else if (reasonPrompt === "2") reason = "false_nsfw";
+    else if (reasonPrompt === "3") reason = "false_ai";
+    else if (reasonPrompt === "4") reason = "spam";
+    else if (reasonPrompt === "5") {
+      reason = "other";
+      customReason = prompt("Masukkan alasan lainnya (spesifik):") || "";
+      if (!customReason.trim()) {
+        toast.error("Alasan khusus tidak boleh kosong!");
+        return;
+      }
+    } else {
+      toast.error("Pilihan tidak valid");
+      return;
+    }
+
+    setReporting(true);
+    try {
+      const res = await fetch(`/api/posts/${post._id}/report`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason, customReason }),
+      });
+      const data = await res.json();
+
+      if (res.ok) {
+        toast.success(data.message || "Laporan berhasil dikirim!");
+      } else {
+        toast.error(data.error || "Gagal mengirim laporan");
+      }
+    } catch {
+      toast.error("Terjadi kesalahan sistem saat mengirim laporan");
+    } finally {
+      setReporting(false);
+    }
+  }
+
   if (!post) {
     return <p className="text-center mt-10 text-gray-500 dark:text-gray-400">Loading...</p>;
   }
@@ -82,16 +140,16 @@ export default function PostDetail({ params }: { params: { id: string } }) {
       {/* AMBIENT BACKGROUND */}
       <div className="relative w-full overflow-hidden" style={{ minHeight: "420px" }}>
         {!shouldBlur && (
-        <div
-          className="absolute inset-0 scale-110 opacity-40"
-          style={{
-            backgroundImage: `url(${post.img})`,
-            backgroundSize: "cover",
-            backgroundPosition: "center",
-            // Jika harus diblur, tambah kekuatan blur dasarnya agar konten tidak bocor lewat ambient background
-            filter: "blur(40px)",
-          }}
-        />)}
+          <div
+            className="absolute inset-0 scale-110 opacity-40"
+            style={{
+              backgroundImage: `url(${post.img})`,
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+              filter: "blur(40px)",
+            }}
+          />
+        )}
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-white dark:to-[#0B0B10]" />
 
         <div className="relative z-10 max-w-4xl mx-auto px-4 md:px-8 pt-8 pb-0">
@@ -102,7 +160,6 @@ export default function PostDetail({ params }: { params: { id: string } }) {
               <img
                 src={post.img}
                 alt={post.title}
-                // Klik untuk zoom dinonaktifkan/tidak berefek jika gambar sedang disensor blur
                 onClick={() => !shouldBlur && setShowImage(true)}
                 className={`w-full max-h-[700px] object-cover transition duration-300 ${
                   shouldBlur 
@@ -156,6 +213,17 @@ export default function PostDetail({ params }: { params: { id: string } }) {
                   >
                     <Share2 size={14} />
                     <span className="hidden sm:inline">Share</span>
+                  </button>
+
+                  {/* TOMBOL REPORT */}
+                  <button
+                    disabled={reporting}
+                    onClick={handleReport}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-red-200 dark:border-red-900/30 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/10 transition text-sm disabled:opacity-50"
+                    title="Laporkan postingan ini"
+                  >
+                    <Flag size={14} className={reporting ? "animate-pulse" : ""} />
+                    <span className="hidden sm:inline">Report</span>
                   </button>
                 </div>
               </div>
