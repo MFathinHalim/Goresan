@@ -15,140 +15,197 @@ export const dynamic = "force-dynamic";
 // FIX 2: Ambil global cache singleton agar LRUCache tidak ter-reset setiap kali API di-hit di Vercel
 const globalForCache = global as unknown as { uploadRateLimiter: LRUCache<string, number> };
 if (!globalForCache.uploadRateLimiter) {
-  globalForCache.uploadRateLimiter = new LRUCache<string, number>({
-    max: 500,
-    ttl: 1000 * 60,
-  });
+    globalForCache.uploadRateLimiter = new LRUCache<string, number>({
+        max: 500,
+        ttl: 1000 * 60,
+    });
 }
 const uploadRateLimiter = globalForCache.uploadRateLimiter;
 
 // Fungsi pembantu untuk membuat instance ImageKit saat runtime
 function getImageKitInstance() {
-  return new ImageKit({
-    publicKey: process.env.IMAGEKIT_PUBLIC_KEY!,
-    privateKey: process.env.IMAGEKIT_PRIVATE_KEY!,
-    urlEndpoint: process.env.IMAGEKIT_URL_ENDPOINT!,
-  });
+    return new ImageKit({
+        publicKey: process.env.IMAGEKIT_PUBLIC_KEY!,
+        privateKey: process.env.IMAGEKIT_PRIVATE_KEY!,
+        urlEndpoint: process.env.IMAGEKIT_URL_ENDPOINT!,
+    });
 }
 
 export async function GET(req: NextRequest) {
-  await connect();
+    await connect();
 
-  let allowNSFW = false;
-  let userId: string | null = null;
-  let userInteractions: any[] = [];
+    let allowNSFW = false;
+    let userId: string | null = null;
+    let userInteractions: any[] = [];
 
-  try {
-    userId = getDataFromToken(req);
-    const user = await User.findById(userId).select("age allowNSFW interactions");
-    allowNSFW = user && user.age >= 18 && user.allowNSFW === true;
-    userInteractions = user?.interactions || [];
-  } catch {
-    allowNSFW = false;
-  }
+    try {
+        userId = getDataFromToken(req);
+        const user = await User.findById(userId).select("age allowNSFW interactions");
+        allowNSFW = user && user.age >= 18 && user.allowNSFW === true;
+        userInteractions = user?.interactions || [];
+    } catch {
+        allowNSFW = false;
+    }
 
-  const { searchParams } = new URL(req.url);
-  const allowedAI = searchParams.get("allowedAI") === "true";
+    const { searchParams } = new URL(req.url);
+    const allowedAI = searchParams.get("allowedAI") === "true";
 
-  const favoriteTags = userInteractions
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 3)
-    .map(i => i.tag);
+    const favoriteTags = userInteractions
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 3)
+        .map((i) => i.tag);
 
-  const matchFilter: any = {};
-  
-  if (!allowNSFW) {
-    matchFilter.tags = { ...matchFilter.tags, $nin: [/^nsfw$/i] };
-  }
-  if (!allowedAI) {
-    if (!matchFilter.tags) matchFilter.tags = {};
-    matchFilter.tags.$nin = [...(matchFilter.tags.$nin || []), /^ai$/i];
-  }
+    const matchFilter: any = {};
 
-  let pipeline: any[] = [
-    { $match: matchFilter }
-  ];
+    if (!allowNSFW) {
+        matchFilter.tags = { ...matchFilter.tags, $nin: [/^nsfw$/i] };
+    }
+    if (!allowedAI) {
+        if (!matchFilter.tags) matchFilter.tags = {};
+        matchFilter.tags.$nin = [...(matchFilter.tags.$nin || []), /^ai$/i];
+    }
 
-  if (favoriteTags.length > 0) {
-    pipeline.push({
-      $addFields: {
-        isFavorite: {
-          $cond: {
-            if: { $gt: [{ $size: { $setIntersection: ["$tags", favoriteTags] } }, 0] },
-            then: 1,
-            else: 0
-          }
-        }
-      }
+    let pipeline: any[] = [{ $match: matchFilter }];
+
+    if (favoriteTags.length > 0) {
+        pipeline.push({
+            $addFields: {
+                isFavorite: {
+                    $cond: {
+                        if: { $gt: [{ $size: { $setIntersection: ["$tags", favoriteTags] } }, 0] },
+                        then: 1,
+                        else: 0,
+                    },
+                },
+            },
+        });
+
+        pipeline.push({ $sort: { isFavorite: -1 } });
+    }
+
+    pipeline.push({ $sample: { size: 12 } });
+
+    const randomPosts = await Post.aggregate(pipeline);
+
+    return NextResponse.json({
+        posts: randomPosts,
+        allowNSFW,
+        allowedAI,
     });
-    
-    pipeline.push({ $sort: { isFavorite: -1 } });
-  }
-
-  pipeline.push({ $sample: { size: 12 } });
-
-  const randomPosts = await Post.aggregate(pipeline);
-
-  return NextResponse.json({ 
-    posts: randomPosts, 
-    allowNSFW,
-    allowedAI
-  });
 }
 
 export async function POST(req: NextRequest) {
-  await connect();
-  try {
-    const userId = getDataFromToken(req);
-    const user = await User.findById(userId).select("-password");
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    await connect();
+    try {
+        const userId = getDataFromToken(req);
+        const user = await User.findById(userId).select("-password");
+        if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    // VERIFIKASI RATE LIMIT
-    const currentUploadCount = uploadRateLimiter.get(userId.toString()) || 0;
+        // VERIFIKASI RATE LIMIT
+        const currentUploadCount = uploadRateLimiter.get(userId.toString()) || 0;
 
-    if (currentUploadCount >= 3) {
-      return NextResponse.json(
-        { error: "Aktivitas upload terlalu cepat. Silakan tunggu 1 menit lagi." },
-        { status: 429 }
-      );
+        if (currentUploadCount >= 3) {
+            return NextResponse.json({ error: "Aktivitas upload terlalu cepat. Silakan tunggu 1 menit lagi." }, { status: 429 });
+        }
+        uploadRateLimiter.set(userId.toString(), currentUploadCount + 1);
+
+        const formData = await req.formData();
+        const title = formData.get("title") as string;
+        const desc = formData.get("desc") as string;
+        const tags = ((formData.get("tags") as string) || "")
+            .split(",")
+            .map((t) => t.trim())
+            .filter(Boolean);
+        const file = formData.get("file") as File;
+
+        if (!file || !title) {
+            return NextResponse.json({ error: "Title dan gambar wajib diisi" }, { status: 400 });
+        }
+
+        const rawBuffer = Buffer.from(await file.arrayBuffer());
+
+        const isNSFW = await detectNSFW(rawBuffer, file.type);
+        const isAI = await detectAIImage(rawBuffer, file.type);
+
+        if (isNSFW && !tags.some((t) => t.toLowerCase() === "nsfw")) {
+            tags.push("nsfw");
+        }
+        if (isAI && !tags.some((t) => t.toLowerCase() === "ai")) {
+            tags.push("ai");
+        }
+
+        // Inisialisasi ImageKit aman di dalam runtime fungsi
+        const imagekit = getImageKitInstance();
+        const uploaded = await imagekit.upload({
+            file: rawBuffer,
+            fileName: `${Date.now()}_${file.name.replace(/\s+/g, "_")}`,
+            folder: "/goresan",
+        });
+
+        const posts = Posts.getInstance();
+        const post = await posts.posting(title, desc, uploaded.url, tags, user);
+        return NextResponse.json({ post }, { status: 201 });
+    } catch (error) {
+        console.error("Error creating post:", error);
+        return NextResponse.json({ error: "Server Error" }, { status: 500 });
     }
-    uploadRateLimiter.set(userId.toString(), currentUploadCount + 1);
+}
 
-    const formData = await req.formData();
-    const title = formData.get("title") as string;
-    const desc = formData.get("desc") as string;
-    const tags = (formData.get("tags") as string || "").split(",").map(t => t.trim()).filter(Boolean);
-    const file = formData.get("file") as File;
+export async function DELETE(req: NextRequest) {
+    await connect();
+    try {
+        // 1. Ambil userId dari token dan validasi user
+        const userId = getDataFromToken(req);
+        if (!userId) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
 
-    if (!file || !title) {
-      return NextResponse.json({ error: "Title dan gambar wajib diisi" }, { status: 400 });
+        // 2. Ambil postId dari query parameter URL (misal: /api/posts?id=xxxx)
+        const { searchParams } = new URL(req.url);
+        const postId = searchParams.get("id");
+
+        if (!postId) {
+            return NextResponse.json({ error: "Post ID wajib disertakan" }, { status: 400 });
+        }
+
+        // 3. Cari postingan di database
+        const post = await Post.findById(postId);
+        if (!post) {
+            return NextResponse.json({ error: "Postingan tidak ditemukan" }, { status: 404 });
+        }
+
+        // 4. Cek apakah user yang mau menghapus adalah pemilik asli postingan tersebut
+        // Menggunakan .toString() karena post.author biasanya berupa ObjectId
+        if (post.user.toString() !== userId.toString()) {
+            return NextResponse.json({ error: "Forbidden: Anda tidak memiliki akses untuk menghapus postingan ini" }, { status: 403 });
+        }
+
+        // Optional: Jika kamu ingin menghapus file medianya juga dari ImageKit, kamu butuh fileId dari ImageKit
+        const imagekit = getImageKitInstance();
+        const urlObj = new URL(post.img);
+        const fileName = urlObj.pathname.split("/").pop(); // Gets 'example.jpg'
+
+        // 2. Search for the file in the Media Library using the name
+        const files = await imagekit.listFiles({
+            searchQuery: `name = "${fileName}"`,
+        });
+
+        if (files.length === 0) {
+            console.log("File not found.");
+            return;
+        }
+
+        //@ts-ignore
+        const fileId = files[0].fileId;
+
+        // 4. Permanently delete the file using its ID
+        await imagekit.deleteFile(fileId);
+        // 5. Hapus postingan dari database
+        await Post.findByIdAndDelete(postId);
+
+        return NextResponse.json({ message: "Postingan berhasil dihapus" }, { status: 200 });
+    } catch (error) {
+        console.error("Error deleting post:", error);
+        return NextResponse.json({ error: "Server Error" }, { status: 500 });
     }
-
-    const rawBuffer = Buffer.from(await file.arrayBuffer());
-
-    const isNSFW = await detectNSFW(rawBuffer, file.type);
-    const isAI = await detectAIImage(rawBuffer, file.type);
-
-    if (isNSFW && !tags.some(t => t.toLowerCase() === "nsfw")) {
-      tags.push("nsfw");
-    }
-    if (isAI && !tags.some(t => t.toLowerCase() === "ai")) {
-      tags.push("ai");
-    }
-
-    // Inisialisasi ImageKit aman di dalam runtime fungsi
-    const imagekit = getImageKitInstance();
-    const uploaded = await imagekit.upload({
-      file: rawBuffer,
-      fileName: `${Date.now()}_${file.name.replace(/\s+/g, "_")}`,
-      folder: "/goresan",
-    });
-
-    const posts = Posts.getInstance();
-    const post = await posts.posting(title, desc, uploaded.url, tags, user);
-    return NextResponse.json({ post }, { status: 201 });
-  } catch (error) {
-    console.error("Error creating post:", error);
-    return NextResponse.json({ error: "Server Error" }, { status: 500 });
-  }
 }

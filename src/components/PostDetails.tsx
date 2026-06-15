@@ -7,6 +7,7 @@ import { Heart, Share2, EyeOff, Flag, X, AlertTriangle, Edit, Trash, MoreHorizon
 import { useUser } from "@/context/userContext";
 import { formatDistanceToNow } from "date-fns";
 import PostDetailSkeleton from "./Skeletons/PostDetails";
+import axios from "axios";
 
 export default function PostDetailClient({ params }: { params: { id: string } }) {
     const { user } = useUser();
@@ -38,7 +39,30 @@ export default function PostDetailClient({ params }: { params: { id: string } })
     const [loadingComments, setLoadingComments] = useState(true);
     const [sendingComment, setSendingComment] = useState(false);
     const [openMenu, setOpenMenu] = useState<string | null>(null);
+    const [openPostMenu, setOpenPostMenu] = useState<boolean>(false);
+    const [deleting, setDeleting] = useState<boolean>(false);
 
+    const handleDeletePost = async (postId: string) => {
+        try {
+            setDeleting(true);
+
+            // Panggil API delete yang sudah kita buat sebelumnya
+            const response = await axios.delete(`/api/posts?id=${postId}`);
+
+            if (response.status === 200) {
+                toast.success("Postingan berhasil dihapus!");
+
+                // Redirect user ke halaman beranda atau profile setelah berhasil menghapus
+                window.location.href = "/";
+            }
+        } catch (error: any) {
+            console.error("Gagal menghapus postingan:", error);
+            const errorMessage = error.response?.data?.error || "Terjadi kesalahan saat menghapus postingan.";
+            toast.error(errorMessage);
+        } finally {
+            setDeleting(false);
+        }
+    };
     async function fetchComments() {
         try {
             setLoadingComments(true);
@@ -298,9 +322,54 @@ export default function PostDetailClient({ params }: { params: { id: string } })
                         {/* DETAIL */}
                         <div className='p-4 md:p-6 bg-white dark:bg-zinc-900'>
                             {/* TITLE + ACTIONS */}
-                            <div className='flex flex-wrap justify-between items-start gap-3'>
-                                <h1 className='text-2xl md:text-3xl font-bold flex-1 min-w-0'>{post.title}</h1>
-                                <div className='flex items-center gap-2 shrink-0'>
+                            <div className='flex flex-col gap-4 border-b border-gray-100 dark:border-zinc-800 pb-4'>
+                                <div className='flex justify-between items-start gap-4 w-full'>
+                                    {/* Judul Post */}
+                                    <h1 className='text-2xl md:text-3xl font-bold flex-1 min-w-0 break-words'>{post.title}</h1>
+
+                                    {/* TITIK TIGA FOR POST ACTIONS */}
+                                    <div className='relative shrink-0 mt-1'>
+                                        <button
+                                            onClick={() => setOpenPostMenu(!openPostMenu)}
+                                            className='p-2 rounded-full hover:bg-gray-100 dark:hover:bg-zinc-800 transition text-gray-600 dark:text-gray-300'
+                                            title='Menu postingan'>
+                                            <MoreVertical size={20} />
+                                        </button>
+
+                                        {openPostMenu && (
+                                            <div className='absolute right-0 top-10 z-30 w-40 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 shadow-lg overflow-hidden'>
+                                                {/* HANYA MUNCUL JIKA PEMILIK POSTINGAN / ADMIN */}
+                                                {(user?._id === post.user?._id || user?.role === "admin") && (
+                                                    <button
+                                                        onClick={() => {
+                                                            setOpenPostMenu(false);
+                                                            handleDeletePost(post._id);
+                                                        }}
+                                                        className='w-full px-4 py-2.5 flex items-center gap-2 hover:bg-red-50 dark:hover:bg-red-950/20 text-red-500 text-sm transition text-left border-b border-zinc-100 dark:border-zinc-800'>
+                                                        <Trash size={14} /> Delete Post
+                                                    </button>
+                                                )}
+
+                                                {/* TOMBOL REPORT PINDAH KE DALAM SINI AGAR LEBIH RAPI */}
+                                                <button
+                                                    onClick={() => {
+                                                        setOpenPostMenu(false);
+                                                        if (!user) {
+                                                            toast.error("Login dulu yuk untuk melapor!");
+                                                        } else {
+                                                            setIsReportModalOpen(true);
+                                                        }
+                                                    }}
+                                                    className='w-full px-4 py-2.5 flex items-center gap-2 hover:bg-gray-50 dark:hover:bg-zinc-800 text-gray-700 dark:text-zinc-300 text-sm transition text-left'>
+                                                    <Flag size={14} /> Report Post
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* INTERACTION BUTTONS (LIKE & SHARE) */}
+                                <div className='flex items-center gap-2 flex-wrap'>
                                     {user ?
                                         <button
                                             disabled={liking}
@@ -309,7 +378,7 @@ export default function PostDetailClient({ params }: { params: { id: string } })
                                             <Heart size={14} className={liked ? "fill-purple-500 text-purple-500" : "text-gray-400 dark:text-gray-300"} />
                                             <span>{likeCount}</span>
                                         </button>
-                                    :   <span className='flex items-center gap-1.5 text-sm text-gray-400'>
+                                    :   <span className='flex items-center gap-1.5 text-sm text-gray-400 border border-gray-200 dark:border-zinc-800 px-3 py-1.5 rounded-full'>
                                             <Heart size={14} />
                                             <span>{likeCount}</span>
                                         </span>
@@ -319,24 +388,12 @@ export default function PostDetailClient({ params }: { params: { id: string } })
                                         onClick={handleShare}
                                         className='flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-gray-300 dark:border-zinc-700 hover:bg-gray-50 dark:hover:bg-zinc-800 transition text-sm'>
                                         <Share2 size={14} />
-                                        <span className='hidden sm:inline'>Share</span>
-                                    </button>
-
-                                    <button
-                                        onClick={() => {
-                                            if (!user) {
-                                                toast.error("Login dulu yuk untuk melapor!");
-                                            } else {
-                                                setIsReportModalOpen(true);
-                                            }
-                                        }}
-                                        className='flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-red-200/50 dark:border-red-600/50 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/40 transition text-sm shadow-sm'
-                                        title='Laporkan postingan ini'>
-                                        <Flag size={14} />
-                                        <span className='hidden sm:inline'>Report</span>
+                                        <span>Share</span>
                                     </button>
                                 </div>
                             </div>
+
+                            <p className='md:text-base mt-2 text-zinc-400 dark:text-zinc-500'>{formatDistanceToNow(new Date(post.time), { addSuffix: true })}</p>
 
                             {post.desc && <p className='mt-4 text-base md:text-lg whitespace-pre-wrap text-gray-700 dark:text-gray-300'>{post.desc}</p>}
 

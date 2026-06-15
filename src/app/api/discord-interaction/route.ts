@@ -4,6 +4,15 @@ import PostModel from "@/models/postModel";
 // Pastikan path model komentar ini sudah sesuai dengan proyekmu
 import CommentModel from "@/models/commentModel";
 import nacl from "tweetnacl";
+import ImageKit from "imagekit";
+
+function getImageKitInstance() {
+    return new ImageKit({
+        publicKey: process.env.IMAGEKIT_PUBLIC_KEY!,
+        privateKey: process.env.IMAGEKIT_PRIVATE_KEY!,
+        urlEndpoint: process.env.IMAGEKIT_URL_ENDPOINT!,
+    });
+}
 
 // Helper untuk mengubah string hex menjadi Uint8Array
 function hexToUint8Array(hexString: string): Uint8Array {
@@ -110,13 +119,26 @@ export async function POST(req: NextRequest) {
                 await post.save();
                 responseText = `🤖 **[${adminName}]** mengubah tag post ini menjadi **AI Art**.`;
             } else if (action === "delete") {
-                const deletedPost = await PostModel.findByIdAndDelete(postId);
-                if (!deletedPost) {
+                // 1. Cari dulu postingannya di database sebelum dihapus
+                const post = await PostModel.findById(postId);
+
+                // 2. Jika postingan sudah tidak ada, langsung kembalikan respons gagal
+                if (!post) {
                     return NextResponse.json({
                         type: 4,
-                        data: { content: `❌ Gagal: Postingan tersebut sudah terhapus.` },
+                        data: { content: `❌ Gagal: Postingan tersebut tidak ditemukan atau sudah terhapus.` },
                     });
                 }
+
+                // 3. Jika postingan ada, hapus file di ImageKit terlebih dahulu
+                // (Pastikan post.img menyimpan fileId ImageKit, jika menyimpan URL utuh, kamu perlu ekstrak ID-nya dulu)
+                const imagekit = getImageKitInstance();
+                await imagekit.deleteFile(post.img);
+
+                // 4. Hapus dokumen dari database MongoDB
+                await PostModel.findByIdAndDelete(postId);
+
+                // 5. Set text respons sukses
                 responseText = `🗑️ **[${adminName}]** telah **Menghapus** postingan tersebut dari aplikasi.`;
             }
         }
