@@ -1,83 +1,114 @@
-# Next.js Authentication App
+Berikut adalah dokumentasi README.md yang profesional, bersih, dan terstruktur dengan baik untuk proyek Goresan.
 
-Explore a Next.js application designed to seamlessly integrate user authentication, providing a secure and intuitive user experience. This repository contains a fully functional Next.js project featuring a robust authentication system, complete with login, logout, and signup functionalities. Utilizing modern technologies such as Axios for API requests and react-hot-toast for elegant notifications, this app showcases best practices in handling user sessions and protecting routes.
+---
 
-## Key Features
+# Goresan
 
-- **Secure Authentication Flow**: Implementing a streamlined login and signup process, ensuring user credentials are handled securely. Passwords are encrypted using `bcryptjs` before storing in the database.
-- **Email Confirmation**: Utilizing `Nodemailer` and `Mailtrap` to send email confirmations during the signup process, enhancing security and user verification.
-- **Session Management**: Efficiently managing user sessions, with seamless integration of logout functionality to ensure user data protection.
-- **Interactive UI**: Leveraging Tailwind CSS for a beautifully designed, responsive user interface that enhances usability and user engagement.
-- **Client-Side Navigation**: Utilizing Next.js's built-in routing capabilities to provide a smooth, SPA-like experience across the authentication pages.
-- **Toast Notifications**: Integrating `react-hot-toast` to display informative success and error messages, improving the overall user interaction.
-- **Profile Management**: A dedicated profile page that allows users to view their details, reinforcing the app's authentication capabilities.
-- **Data Storage**: Using MongoDB Atlas as the database solution for storing user details securely and efficiently.
+Goresan adalah platform berbasis web yang dirancang khusus untuk para kreator dan seniman digital untuk membagikan karya mereka. Dibangun dengan Next.js dan MongoDB, platform ini mengintegrasikan kecerdasan buatan untuk menjaga keamanan komunitas melalui deteksi otomatis konten sensitif dan klasifikasi gambar buatan AI.
 
-Whether you're looking to implement authentication in your Next.js project or seeking inspiration for creating engaging user interfaces with Tailwind CSS, this repository offers valuable insights and practical code examples. Dive into the code to discover how to build secure, scalable, and user-friendly web applications with Next.js.
+Tautan Aplikasi: [https://goresan.vercel.app](https://goresan.vercel.app)
 
-## Screenshots
-- Sign Up
-  ![tuxpi com 1712470719](https://github.com/RAVIGANESHMBHAT/NextJS-Authentication/assets/41186067/75e42e47-e09f-4178-9830-6f51dd757839)
+Repositori GitHub: [https://github.com/MFathinHalim/Goresan](https://github.com/MFathinHalim/Goresan)
 
-- Verify Email
-  ![tuxpi com 1712472322](https://github.com/RAVIGANESHMBHAT/NextJS-Authentication/assets/41186067/4d8c5b0b-d904-4d69-ad78-77dc39db1b48)
+## Fitur Utama
 
-- Successful Email Verification
-![tuxpi com 1712474775](https://github.com/RAVIGANESHMBHAT/NextJS-Authentication/assets/41186067/230897ea-56a3-4564-a642-0fde4d355fe8)
+### Autentikasi dan Manajemen Pengguna
 
-- Failed to Verify Email
- ![tuxpi com 1712474721](https://github.com/RAVIGANESHMBHAT/NextJS-Authentication/assets/41186067/77edc349-b923-4f88-988f-f6ad51190296)
+- Pendaftaran akun baru dengan sistem verifikasi email otomatis.
+- Autentikasi masuk menggunakan enkripsi kata sandi berbasis Bcrypt.
+- Pemulihan akun melalui fitur lupa kata sandi dengan token aman berbasis SHA-256 yang dikirimkan ke email pengguna.
+- Pengaturan profil kustomisasi umur dan preferensi tampilan konten.
 
-- Login
-  ![tuxpi com 1712470649](https://github.com/RAVIGANESHMBHAT/NextJS-Authentication/assets/41186067/8de32408-99f8-4a2c-8847-50fef069897e)
+### Keamanan Konten Berbasis AI
 
-- Profile
-  ![tuxpi com 1712470785](https://github.com/RAVIGANESHMBHAT/NextJS-Authentication/assets/41186067/e1475e48-f55f-44e4-b141-8a745ae43845)
+- Deteksi otomatis konten sensitif (NSFW) pada gambar yang diunggah menggunakan integrasi Hugging Face API.
+- Identifikasi otomatis untuk gambar yang dihasilkan oleh kecerdasan buatan (AI Generated Content) demi transparansi komunitas.
+- Sistem penyaringan konten (Hide/Show NSFW) yang dikendalikan secara dinamis berdasarkan verifikasi umur pengguna di atas 18 tahun.
 
-- Profile Details
-  ![tuxpi com 1712470849](https://github.com/RAVIGANESHMBHAT/NextJS-Authentication/assets/41186067/0b0cb8e3-e77e-41e9-81bf-71c51ceca81f)
+### Interaksi dan Eksplorasi
 
-- Home Page which can be accessed after successful login
-  ![tuxpi com 1712470887](https://github.com/RAVIGANESHMBHAT/NextJS-Authentication/assets/41186067/4d61665f-b48b-4a9e-9009-90a8d449923d)
+- Unggah dan manajemen aset gambar yang dioptimalkan melalui integrasi Imagekit.io.
+- Fitur pencarian berbasis teks untuk mempermudah eksplorasi karya di dalam platform.
+- Sistem pelaporan (Report) konten yang melanggar panduan komunitas untuk ditinjau lebih lanjut.
 
-- Toast message on the top
-![tuxpi com 1712471311](https://github.com/RAVIGANESHMBHAT/NextJS-Authentication/assets/41186067/dd70a8ef-e7ef-405b-89ba-4107d0b9e7a7)
+## Teknologi Yang Digunakan
 
-## Getting Started
+### Frontend dan Backend
 
-To get a local copy up and running follow these simple steps.
-1. Clone the repo
+- Next.js (App Router)
+- TypeScript
+- Tailwind CSS
+
+### Basis Data dan Penyimpanan Aset
+
+- MongoDB dan Mongoose Object Data Modeling (ODM)
+- Imagekit.io SDK untuk manajemen dan optimasi media Gambar
+
+### Layanan Pihak Ketiga
+
+- Hugging Face Inference API (Model Klasifikasi NSFW dan Deteksi Gambar AI)
+- Nodemailer untuk layanan pengiriman email sistem
+
+## Panduan Instalasi
+
+### Prasyarat
+
+Pastikan Anda telah menginstal Node.js versi terbaru dan memiliki akun aktif di MongoDB Atlas, Imagekit.io, serta Hugging Face.
+
+### Langkah Pertama
+
+Kloning repositori ini ke dalam direktori lokal Anda.
+
 ```bash
-git clone https://github.com/RAVIGANESHMBHAT/NextJS-Authentication.git
+git clone https://github.com/MFathinHalim/Goresan.git
+cd Goresan
+
 ```
 
-2. Go to the project folder
-```bash
-cd NextJS-Authentication
-```
+### Langkah Kedua
 
-3. Install NPM packages
+Instal semua dependensi yang diperlukan oleh proyek.
+
 ```bash
 npm install
-```
-or
-```bash
-yarn install
+
 ```
 
-4. Create `.env` file and enter valid data. (Refer to `.env.sample` file)
+### Langkah Ketiga
 
-5. Run the development server
+Buat sebuah file bernama `.env` pada direktori utama proyek Anda dan isi variabel lingkungan di bawah ini sesuai dengan kredensial layanan Anda.
+
+```env
+# Konfigurasi Aplikasi dan Basis Data
+DOMAIN=http://localhost:3000
+MONGODB_URI=your_mongodb_connection_string
+
+# Kredensial Imagekit.io
+IMAGEKIT_PUBLIC_KEY=your_imagekit_public_key
+IMAGEKIT_PRIVATE_KEY=your_imagekit_private_key
+IMAGEKIT_URL_ENDPOINT=your_imagekit_url_endpoint
+
+# Kredensial Hugging Face API
+HUGGINGFACE_API_KEY=your_huggingface_api_key
+
+# Konfigurasi Pengiriman Email (Nodemailer)
+NODE_MAILER_USER=your_gmail_address
+NODE_MAILER_PASSWORD=your_gmail_app_password
+NODE_MAILER_FROM_MAIL=your_gmail_address
+
+```
+
+### Langkah Keempat
+
+Jalankan server pengembangan lokal.
+
 ```bash
 npm run dev
-```
-or
-```bash
-yarn dev
+
 ```
 
-## Useful links
-- NextJS - https://nextjs.org/docs/getting-started/installation
-- Mailtrap - https://mailtrap.io/signin
-- Nodemailer - https://www.nodemailer.com/
-- MongoDb Atlas - https://www.mongodb.com/cloud/atlas/register
+Buka browser Anda dan akses halaman http://localhost:3000 untuk melihat aplikasi yang berjalan di lingkungan lokal.
+
+## Kontribusi
+
+Jika Anda ingin berkontribusi pada pengembangan Goresan, silakan buat fork pada repositori ini, lakukan perubahan pada branch fitur Anda, dan kirimkan sebuah Pull Request untuk ditinjau oleh pengembang utama.
