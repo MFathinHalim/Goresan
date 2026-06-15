@@ -133,8 +133,24 @@ export async function POST(req: NextRequest) {
                 // 3. Jika postingan ada, hapus file di ImageKit terlebih dahulu
                 // (Pastikan post.img menyimpan fileId ImageKit, jika menyimpan URL utuh, kamu perlu ekstrak ID-nya dulu)
                 const imagekit = getImageKitInstance();
-                await imagekit.deleteFile(post.img);
+                const urlObj = new URL(post.img);
+                const fileName = urlObj.pathname.split("/").pop(); // Gets 'example.jpg'
 
+                // 2. Search for the file in the Media Library using the name
+                const files = await imagekit.listFiles({
+                    searchQuery: `name = "${fileName}"`,
+                });
+
+                if (files.length === 0) {
+                    console.log("File not found.");
+                    return;
+                }
+
+                //@ts-ignore
+                const fileId = files[0].fileId;
+
+                // 4. Permanently delete the file using its ID
+                await imagekit.deleteFile(fileId);
                 // 4. Hapus dokumen dari database MongoDB
                 await PostModel.findByIdAndDelete(postId);
 
