@@ -1,5 +1,5 @@
+<img width="500" height="500" alt="image" src="https://github.com/user-attachments/assets/0cb69b5b-2165-4836-aacc-b7f729032cfc" />
 # Goresan
-<img width="1024" height="1024" alt="image" src="https://github.com/user-attachments/assets/0cb69b5b-2165-4836-aacc-b7f729032cfc" />
 Goresan adalah platform berbasis web yang dirancang khusus untuk para kreator dan seniman digital untuk membagikan karya mereka. Dibangun dengan Next.js dan MongoDB, platform ini mengintegrasikan kecerdasan buatan untuk menjaga keamanan komunitas melalui deteksi otomatis konten sensitif dan klasifikasi gambar buatan AI.
 
 Tautan Aplikasi: [https://goresan.vercel.app](https://goresan.vercel.app)
