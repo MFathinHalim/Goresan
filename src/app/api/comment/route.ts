@@ -4,26 +4,26 @@ import { connect } from "@/dbConfig/dbConfig";
 
 import Comment from "@/models/commentModel";
 import Post from "@/models/postModel";
+import { getDataFromToken } from "@/helpers/getDataFromToken";
+import User from "@/models/userModel";
 
 export async function POST(req: NextRequest) {
     try {
         await connect();
+        const idUser = getDataFromToken(req);
+        const user = await User.findById(idUser).select("-password");
+        if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         const body = await req.json();
 
-        const {
-            userId,
-            postId,
-            content,
-            parentComment
-        } = body;
+        const { userId, postId, content, parentComment } = body;
 
         if (!content?.trim()) {
             return NextResponse.json(
                 {
-                success: false,
-                message: "Comment kosong",
+                    success: false,
+                    message: "Comment kosong",
                 },
-                { status: 400 }
+                { status: 400 },
             );
         }
 
@@ -46,12 +46,15 @@ export async function POST(req: NextRequest) {
         });
     } catch (err: any) {
         console.error(err);
-        
-        return NextResponse.json({
-            success: false,
-            message: err.message,
-        }, {
-            status: 500,
-        })
+
+        return NextResponse.json(
+            {
+                success: false,
+                message: err.message,
+            },
+            {
+                status: 500,
+            },
+        );
     }
 }

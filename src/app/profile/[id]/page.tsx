@@ -99,8 +99,9 @@ export default function ProfileDetails({ params }: { params: { id: string } }) {
         setSettingsLoading(false);
     }
 
+    // FIX: Tambahkan pengecekan null/undefined agar tidak crash jika email kosong
     function maskEmail(email: string) {
-        if (!email?.includes("@")) return email;
+        if (!email || !email.includes("@")) return "";
         const [name, domain] = email.split("@");
         return `${name.slice(0, 2)}${"*".repeat(Math.max(4, name.length - 2))}@${domain}`;
     }
@@ -224,10 +225,13 @@ export default function ProfileDetails({ params }: { params: { id: string } }) {
                         )}
                     </div>
 
-                    <div className='flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mt-1'>
-                        <Mail size={14} />
-                        <span className='truncate max-w-[200px]'>{isOwner ? user.email : maskEmail(user.email)}</span>
-                    </div>
+                    {/* FIX: Hanya render baris email jika user memiliki properti email (pemilik asli) */}
+                    {user.email && (
+                        <div className='flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mt-1'>
+                            <Mail size={14} />
+                            <span className='truncate max-w-[200px]'>{isOwner ? user.email : maskEmail(user.email)}</span>
+                        </div>
+                    )}
 
                     {user.description && <p className='text-gray-600 dark:text-gray-300 mt-2 text-sm max-w-screen lg:w-[30vw]'>{user.description}</p>}
 
@@ -237,6 +241,7 @@ export default function ProfileDetails({ params }: { params: { id: string } }) {
                     </div>
                 </div>
             </div>
+
             {/* TABS */}
             {isOwner && (
                 <div className='flex justify-center gap-8 border-b border-zinc-200 dark:border-zinc-800 mx-6'>
