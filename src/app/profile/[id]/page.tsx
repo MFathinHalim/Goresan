@@ -161,35 +161,76 @@ export default function ProfileDetails({ params }: { params: { id: string } }) {
 
             {/* SETTINGS MODAL */}
             {showSettings && (
-                <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/60'>
-                    <div className='bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 w-full max-w-md mx-4'>
-                        <div className='flex justify-between items-center mb-4'>
-                            <h2 className='text-xl text-purple-700 dark:text-purple-400'>Settings</h2>
-                            <button onClick={() => setShowSettings(false)}>
-                                <X size={20} />
+                <div className='fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/40 backdrop-blur-sm transition-opacity'>
+                    <div className='bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-2xl p-6 w-full max-w-md mx-4 shadow-xl shadow-zinc-200/50 dark:shadow-none relative overflow-hidden'>
+                        {/* Dekorasi Latar Belakang Halus */}
+                        <div className='absolute -top-10 -right-10 w-32 h-32 bg-purple-400/10 dark:bg-purple-600/10 rounded-full blur-2xl pointer-events-none' />
+
+                        {/* HEADER MODAL */}
+                        <div className='flex justify-between items-center mb-6 relative z-10'>
+                            <h2 className='text-xl font-bold tracking-tight text-zinc-900 dark:text-white'>Pengaturan Profil</h2>
+                            <button
+                                onClick={() => setShowSettings(false)}
+                                className='p-1.5 rounded-lg text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800 hover:text-zinc-700 dark:hover:text-zinc-200 transition'>
+                                <X size={18} />
                             </button>
                         </div>
 
-                        <input
-                            type='number'
-                            value={settingsAge}
-                            onChange={(e) => setSettingsAge(e.target.value)}
-                            className='w-full px-4 py-2 mb-4 rounded-full border border-zinc-300 dark:border-zinc-700 bg-transparent'
-                            placeholder='umur'
-                        />
+                        <hr className='border-zinc-100 dark:border-zinc-800 mb-5' />
 
-                        <label className='flex items-center justify-between mb-4'>
-                            <span>NSFW</span>
-                            <input type='checkbox' checked={settingsNSFW} onChange={(e) => setSettingsNSFW(e.target.checked)} disabled={Number(settingsAge) < 18} />
-                        </label>
+                        {/* FORM UTAMA */}
+                        <div className='space-y-5 relative z-10'>
+                            {/* Input Umur */}
+                            <div>
+                                <label className='block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wider'>Umur Kamu</label>
+                                <input
+                                    type='number'
+                                    value={settingsAge}
+                                    onChange={(e) => setSettingsAge(e.target.value)}
+                                    className='w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-950/50 px-4 py-2.5 text-sm outline-none transition focus:border-purple-500 focus:ring-1 focus:ring-purple-500'
+                                    placeholder='Masukkan umur'
+                                />
+                            </div>
 
-                        <button onClick={handleSettingsSubmit} disabled={settingsLoading} className='w-full py-2 rounded-full bg-purple-700 dark:bg-purple-500 text-white'>
-                            Simpan
-                        </button>
+                            {/* Toggle NSFW */}
+                            <div className='flex items-center justify-between p-3 rounded-xl border border-zinc-100 dark:border-zinc-800 bg-zinc-50/30 dark:bg-zinc-900/30'>
+                                <div className='space-y-0.5'>
+                                    <span className='text-sm font-medium text-zinc-800 dark:text-zinc-200'>Konten Sensitif (NSFW)</span>
+                                    <p className='text-xs text-zinc-400'>
+                                        {Number(settingsAge) < 18 ? "Hanya tersedia untuk umur 18 tahun ke atas." : "Aktifkan untuk melihat konten sensor."}
+                                    </p>
+                                </div>
+                                <input
+                                    type='checkbox'
+                                    checked={settingsNSFW}
+                                    onChange={(e) => setSettingsNSFW(e.target.checked)}
+                                    disabled={Number(settingsAge) < 18}
+                                    className='w-4 h-4 text-purple-600 border-zinc-300 rounded focus:ring-purple-500 accent-purple-600 disabled:opacity-40'
+                                />
+                            </div>
+
+                            {/* Opsi Ke Keamanan / Forgot Password */}
+                            <div className='flex flex-col gap-1'>
+                                <span className='text-xs font-medium text-zinc-400 uppercase tracking-wider'>Keamanan Akun</span>
+                                <a
+                                    href='/forgotpassword'
+                                    onClick={() => setShowSettings(false)} // Menutup modal saat pindah halaman
+                                    className='text-sm text-purple-700 dark:text-purple-400 hover:text-purple-800 dark:hover:text-purple-300 font-medium transition inline-flex items-center gap-1.5 py-1'>
+                                    Atur ulang kata sandi (Reset Password) &rarr;
+                                </a>
+                            </div>
+
+                            {/* Action Button */}
+                            <button
+                                onClick={handleSettingsSubmit}
+                                disabled={settingsLoading}
+                                className='w-full mt-2 px-6 py-2.5 bg-purple-700 dark:bg-purple-500 hover:bg-purple-800 dark:hover:bg-purple-600 disabled:opacity-50 text-white font-medium text-sm rounded-xl transition shadow-lg shadow-purple-500/10 flex items-center justify-center'>
+                                {settingsLoading ? "Menyimpan..." : "Simpan Perubahan"}
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
-
             {/* HEADER */}
             <div className='flex flex-col sm:flex-row gap-6 lg:gap-10 px-6 py-8 justify-center items-center sm:items-start'>
                 <img
