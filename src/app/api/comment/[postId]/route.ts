@@ -3,6 +3,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { connect } from "@/dbConfig/dbConfig";
 
 import Comment from "@/models/commentModel";
+import { getDataFromToken } from "@/helpers/getDataFromToken";
+import User from "@/models/userModel";
 
 interface Params {
     params: {
@@ -33,7 +35,9 @@ export async function GET(req: NextRequest, { params }: Params) {
 export async function DELETE(req: NextRequest, { params }: Params) {
     try {
         await connect();
-
+        const idUser = getDataFromToken(req);
+        const user = await User.findById(idUser).select("-password");
+        if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         const { postId } = params;
 
         if (!postId) {
@@ -42,6 +46,8 @@ export async function DELETE(req: NextRequest, { params }: Params) {
 
         // Cari dan hapus komentar berdasarkan ID
         const deletedComment = await Comment.findByIdAndDelete(postId);
+
+        if (deletedComment.user !== user) return;
 
         if (!deletedComment) {
             return NextResponse.json({ success: false, error: "Komentar tidak ditemukan atau sudah dihapus" }, { status: 404 });

@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
 
         const comment = await Comment.create({
             post: postId,
-            user: userId,
+            user: idUser,
             content,
             parentComment: parentComment || null,
         });
