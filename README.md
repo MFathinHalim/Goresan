@@ -1,4 +1,4 @@
-<img width="500" height="500" alt="image" src="https://github.com/user-attachments/assets/0cb69b5b-2165-4836-aacc-b7f729032cfc" />
+<img width="100" height="100" alt="image" src="https://github.com/user-attachments/assets/0cb69b5b-2165-4836-aacc-b7f729032cfc" />
 
 # Goresan
 
