@@ -8,6 +8,8 @@ Tautan Aplikasi: [https://goresan.vercel.app](https://goresan.vercel.app)
 
 Repositori GitHub: [https://github.com/MFathinHalim/Goresan](https://github.com/MFathinHalim/Goresan)
 
+<img width="947" height="452" alt="image" src="https://github.com/user-attachments/assets/012d4559-7528-4619-ad20-b0e7e72818e0" />
+
 ## Fitur Utama
 
 ### Autentikasi dan Manajemen Pengguna
