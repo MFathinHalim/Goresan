@@ -9,27 +9,26 @@ import PostModel from "@/models/postModel"; // Import model Post kamu untuk ambi
 const posts = Posts.getInstance();
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
-  await connect();
-  try {
-    const userId = getDataFromToken(req);
-    const user = await User.findById(userId).select("-password");
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    await connect();
+    try {
+        const userId = getDataFromToken(req);
+        const user = await User.findById(userId).select("-password");
+        if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    // 1. Ambil data postingan sebelum di-like untuk mendapatkan tags-nya
-    const targetPost = await PostModel.findById(params.id).select("tags");
-    
-    // 2. Jalankan fungsi liking bawaan kamu
-    const totalLikes = await posts.liking(params.id, user);
+        // 1. Ambil data postingan sebelum di-like untuk mendapatkan tags-nya
+        const targetPost = await PostModel.findById(params.id).select("tags");
+        // 2. Jalankan fungsi liking bawaan kamu
+        const totalLikes = await posts.liking(params.id, user);
 
-    // 3. JALANKAN TRACKING ALGORITMA DI SINI
-    // Jika postingan ketemu dan punya tags, kita beri bobot +3 karena "Like" adalah interaksi yang kuat
-    if (targetPost && targetPost.tags && targetPost.tags.length > 0) {
-      await trackInteraction(userId, targetPost.tags, 3);
+        // 3. JALANKAN TRACKING ALGORITMA DI SINI
+        // Jika postingan ketemu dan punya tags, kita beri bobot +3 karena "Like" adalah interaksi yang kuat
+        if (targetPost && targetPost.tags && targetPost.tags.length > 0) {
+            await trackInteraction(userId, targetPost.tags, 3);
+        }
+
+        return NextResponse.json({ totalLikes });
+    } catch (error) {
+        console.error("Error in like route:", error);
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-
-    return NextResponse.json({ totalLikes });
-  } catch (error) {
-    console.error("Error in like route:", error);
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
 }

@@ -12,6 +12,7 @@
     "@huggingface/inference": "^4.13.18",
     "axios": "^1.6.8",
     "bcryptjs": "^2.4.3",
+    "date-fns": "^4.4.0",
     "imagekit": "^6.0.0",
     "jsonwebtoken": "^9.0.2",
     "lru-cache": "^10.4.3",
