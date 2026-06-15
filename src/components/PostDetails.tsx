@@ -3,7 +3,7 @@
 import PostCard from "@/components/Post";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
-import { Heart, Share2, EyeOff, Flag, X, AlertTriangle, Edit, Trash, MoreHorizontal, MoreVertical, Send, SendHorizonal, Loader } from "lucide-react"; // Tambahkan X dan AlertTriangle
+import { Heart, Share2, EyeOff, Flag, X, AlertTriangle, Edit, Trash, MoreHorizontal, MoreVertical, Send, SendHorizonal, Loader } from "lucide-react";
 import { useUser } from "@/context/userContext";
 import { formatDistanceToNow } from "date-fns";
 import PostDetailSkeleton from "./Skeletons/PostDetails";
@@ -17,11 +17,20 @@ export default function PostDetailClient({ params }: { params: { id: string } })
     const [likeCount, setLikeCount] = useState(0);
     const [liking, setLiking] = useState(false);
 
-    // STATE UI MODAL REPORT
+    // STATE UI MODAL REPORT (POST)
     const [isReportModalOpen, setIsReportModalOpen] = useState(false);
     const [selectedReason, setSelectedReason] = useState("");
     const [customReasonText, setCustomReasonText] = useState("");
     const [reporting, setReporting] = useState(false);
+
+    // ========================================================
+    // STATE BARU KHUSUS REPORT COMMENT
+    // ========================================================
+    const [isCommentReportModalOpen, setIsCommentReportModalOpen] = useState(false);
+    const [selectedCommentId, setSelectedCommentId] = useState<string | null>(null);
+    const [selectedCommentReason, setSelectedCommentReason] = useState("");
+    const [customCommentReasonText, setCustomCommentReasonText] = useState("");
+    const [reportingComment, setReportingComment] = useState(false);
 
     // STATE BUAT COMMENT
     const [comments, setComments] = useState<any[]>([]);
@@ -33,11 +42,8 @@ export default function PostDetailClient({ params }: { params: { id: string } })
     async function fetchComments() {
         try {
             setLoadingComments(true);
-
             const res = await fetch(`/api/comment/${post._id}`);
-
             const data = await res.json();
-
             setComments(data.comments || []);
         } catch {
             toast.error("Gagal memuat komentar");
@@ -70,7 +76,6 @@ export default function PostDetailClient({ params }: { params: { id: string } })
         }
     }, [post?._id]);
 
-    // LOGIKA PENGECEKAN BLUR NSFW
     const isPostNSFW = post?.tags?.some((t: string) => t.toLowerCase() === "nsfw");
     const isUserAllowedNSFW = user && user.age >= 18 && user.allowNSFW === true;
     const shouldBlur = isPostNSFW && !isUserAllowedNSFW;
@@ -166,7 +171,6 @@ export default function PostDetailClient({ params }: { params: { id: string } })
         }
     }
 
-    // FUNGSI SUBMIT REPORT DARI MODAL
     async function submitReport() {
         if (!selectedReason) {
             toast.error("Pilih salah satu alasan dulu ya!");
@@ -191,7 +195,7 @@ export default function PostDetailClient({ params }: { params: { id: string } })
 
             if (res.ok) {
                 toast.success(data.message || "Laporan berhasil dikirim!");
-                setIsReportModalOpen(false); // Tutup modal jika sukses
+                setIsReportModalOpen(false);
                 setSelectedReason("");
                 setCustomReasonText("");
             } else {
@@ -201,6 +205,48 @@ export default function PostDetailClient({ params }: { params: { id: string } })
             toast.error("Terjadi kesalahan sistem saat mengirim laporan");
         } finally {
             setReporting(false);
+        }
+    }
+
+    // ========================================================
+    // FUNGSI BARU UNTUK SUBMIT REPORT KOMENTAR KE DISCORD
+    // ========================================================
+    async function submitCommentReport() {
+        if (!selectedCommentReason) {
+            toast.error("Pilih salah satu alasan dulu ya!");
+            return;
+        }
+        if (selectedCommentReason === "other" && !customCommentReasonText.trim()) {
+            toast.error("Alasan khusus tidak boleh kosong!");
+            return;
+        }
+
+        setReportingComment(true);
+        try {
+            // Menembak endpoint khusus report comment yang baru dibuat
+            const res = await fetch(`/api/comment/${selectedCommentId}/report`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    reason: selectedCommentReason,
+                    customReason: selectedCommentReason === "other" ? customCommentReasonText : "",
+                }),
+            });
+            const data = await res.json();
+
+            if (res.ok) {
+                toast.success(data.message || "Laporan komentar berhasil dikirim!");
+                setIsCommentReportModalOpen(false);
+                setSelectedCommentId(null);
+                setSelectedCommentReason("");
+                setCustomCommentReasonText("");
+            } else {
+                toast.error(data.error || "Gagal mengirim laporan komentar");
+            }
+        } catch {
+            toast.error("Terjadi kesalahan sistem saat melaporkan komentar");
+        } finally {
+            setReportingComment(false);
         }
     }
 
@@ -239,7 +285,6 @@ export default function PostDetailClient({ params }: { params: { id: string } })
                                 }`}
                             />
 
-                            {/* Overlay Text Indikator Sensor jika terkena Blur */}
                             {shouldBlur && (
                                 <div className='absolute inset-0 flex flex-col items-center justify-center bg-black/20 text-white p-4 text-center backdrop-blur-sm'>
                                     <EyeOff size={36} className='mb-2 text-zinc-200 drop-shadow' />
@@ -255,7 +300,6 @@ export default function PostDetailClient({ params }: { params: { id: string } })
                             {/* TITLE + ACTIONS */}
                             <div className='flex flex-wrap justify-between items-start gap-3'>
                                 <h1 className='text-2xl md:text-3xl font-bold flex-1 min-w-0'>{post.title}</h1>
-                                {/* ACTIONS */}
                                 <div className='flex items-center gap-2 shrink-0'>
                                     {user ?
                                         <button
@@ -278,7 +322,6 @@ export default function PostDetailClient({ params }: { params: { id: string } })
                                         <span className='hidden sm:inline'>Share</span>
                                     </button>
 
-                                    {/* TOMBOL REPORT NYALA MODAL */}
                                     <button
                                         onClick={() => {
                                             if (!user) {
@@ -295,7 +338,6 @@ export default function PostDetailClient({ params }: { params: { id: string } })
                                 </div>
                             </div>
 
-                            {/* DESC */}
                             {post.desc && <p className='mt-4 text-base md:text-lg whitespace-pre-wrap text-gray-700 dark:text-gray-300'>{post.desc}</p>}
 
                             {/* USER */}
@@ -331,8 +373,7 @@ export default function PostDetailClient({ params }: { params: { id: string } })
 
                             <h2 className='text-xl my-4'>Komentar ({comments.length})</h2>
 
-                            {/* Input */}
-
+                            {/* Input Komentar */}
                             <div className='flex gap-3'>
                                 <div className='flex-1'>
                                     <div className='flex gap-3'>
@@ -342,7 +383,6 @@ export default function PostDetailClient({ params }: { params: { id: string } })
                                             placeholder='Tulis komentar...'
                                             className='w-full h-16 p-3 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-transparent resize-none'
                                         />
-
                                         <div className='flex justify-end'>
                                             <button
                                                 disabled={sendingComment}
@@ -357,15 +397,13 @@ export default function PostDetailClient({ params }: { params: { id: string } })
                                 </div>
                             </div>
 
-                            {/* List */}
-
+                            {/* List Komentar */}
                             <div className='flex flex-col gap-8 overflow-visible mt-8'>
                                 {loadingComments ?
                                     <p className='text-zinc-500'>Loading comments...</p>
                                 :   comments.map((comment) => (
                                         <div key={comment._id} className='flex gap-3 '>
                                             <a href={`/profile/${post.user?._id}`}>
-                                                {" "}
                                                 <img src={comment.user?.profilePicture || "/default-avatar.png"} className='w-12 h-12 rounded-full object-cover' />
                                             </a>
                                             <div className='flex-1 min-w-0'>
@@ -374,14 +412,12 @@ export default function PostDetailClient({ params }: { params: { id: string } })
                                                         <a href={`/profile/${post.user?._id}`} className='font-semibold'>
                                                             {comment.user.username}
                                                         </a>
-
                                                         <span className='text-xs text-zinc-500 whitespace-nowrap'>
                                                             {formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true })}
                                                         </span>
                                                     </div>
 
                                                     <div className='relative shrink-0'>
-                                                        {/* Tombol Tiga Titik */}
                                                         <button
                                                             onClick={() => {
                                                                 setOpenMenu(openMenu === comment._id ? null : comment._id);
@@ -390,23 +426,38 @@ export default function PostDetailClient({ params }: { params: { id: string } })
                                                             <MoreVertical size={18} />
                                                         </button>
 
-                                                        {/* Dropdown Menu - Pastikan dibungkus dengan benar */}
                                                         {openMenu === comment._id && (
                                                             <div className='absolute right-0 top-8 z-30 w-36 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 shadow-lg overflow-hidden'>
+                                                                {/* TOMBOL ACTION BARU: REPORT COMMENT */}
                                                                 <button
                                                                     onClick={() => {
                                                                         setOpenMenu(null);
-                                                                        deleteComment(comment._id);
+                                                                        if (!user) {
+                                                                            toast.error("Login dulu yuk untuk melaporkan komentar!");
+                                                                            return;
+                                                                        }
+                                                                        setSelectedCommentId(comment._id);
+                                                                        setIsCommentReportModalOpen(true);
                                                                     }}
-                                                                    className='w-full px-4 py-3 flex items-center gap-2 hover:bg-red-50 dark:hover:bg-red-950/20 text-red-500 text-sm'>
-                                                                    <Trash size={15} /> Delete
+                                                                    className='w-full px-4 py-2.5 flex items-center gap-2 hover:bg-gray-50 dark:hover:bg-zinc-800 text-gray-700 dark:text-zinc-300 text-sm'>
+                                                                    <Flag size={14} /> Report
                                                                 </button>
+                                                                {/* HANYA MUNCUL JIKA PEMILIK COMMENT / ADMIN */}
+                                                                {(user?._id === comment.user?._id || user?.role === "admin") && (
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            setOpenMenu(null);
+                                                                            deleteComment(comment._id);
+                                                                        }}
+                                                                        className='w-full px-4 py-2.5 flex items-center gap-2 hover:bg-red-50 dark:hover:bg-red-950/20 text-red-500 text-sm border-b border-zinc-100 dark:border-zinc-800'>
+                                                                        <Trash size={14} /> Delete
+                                                                    </button>
+                                                                )}
                                                             </div>
                                                         )}
                                                     </div>
                                                 </div>
-
-                                                <p className='whitespace-pre-wrap break-words'>{comment.content}</p>
+                                                <p className='whitespace-pre-wrap break-words mt-1 text-gray-800 dark:text-gray-200'>{comment.content}</p>
                                             </div>
                                         </div>
                                     ))
@@ -416,7 +467,8 @@ export default function PostDetailClient({ params }: { params: { id: string } })
                     </div>
                 </div>
             </div>
-            {/* RELATED */}
+
+            {/* RELATED POSTS */}
             <div className='mx-auto px-4 md:px-8 mt-8 pb-10'>
                 {relatedPosts.length > 0 && (
                     <div className='columns-2 sm:columns-3 md:columns-4 lg:columns-5 gap-3'>
@@ -430,22 +482,18 @@ export default function PostDetailClient({ params }: { params: { id: string } })
             {/* IMAGE MODAL */}
             {showImage && !shouldBlur && (
                 <div className='fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-6' onClick={() => setShowImage(false)}>
-                    <button className='absolute top-5 Right-6 text-white text-3xl' onClick={() => setShowImage(false)}>
+                    <button className='absolute top-5 right-6 text-white text-3xl' onClick={() => setShowImage(false)}>
                         ×
                     </button>
                     <img src={post.img} alt={post.title} className='max-w-[95vw] max-h-[95vh] object-contain' onClick={(e) => e.stopPropagation()} />
                 </div>
             )}
 
-            {/* ==================== CUSTOM MODAL REPORT UI MODERN ==================== */}
+            {/* ==================== MODAL REPORT POST UI (BAWAAN KAMU) ==================== */}
             {isReportModalOpen && (
                 <div className='fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in'>
-                    {/* Backdrop Blur Gelap */}
-                    <div className='absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity' onClick={() => !reporting && setIsReportModalOpen(false)} />
-
-                    {/* Isi Kotak Modal */}
-                    <div className='relative w-full max-w-md transform rounded-2xl bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 p-6 text-left shadow-2xl transition-all scale-100 flex flex-col gap-4'>
-                        {/* Header Modal */}
+                    <div className='absolute inset-0 bg-black/60 backdrop-blur-sm' onClick={() => !reporting && setIsReportModalOpen(false)} />
+                    <div className='relative w-full max-w-md rounded-2xl bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 p-6 shadow-2xl flex flex-col gap-4 z-10'>
                         <div className='flex items-center justify-between border-b border-gray-100 dark:border-zinc-800 pb-3'>
                             <div className='flex items-center gap-2 text-red-500 font-bold text-lg'>
                                 <AlertTriangle size={20} />
@@ -454,12 +502,10 @@ export default function PostDetailClient({ params }: { params: { id: string } })
                             <button
                                 disabled={reporting}
                                 onClick={() => setIsReportModalOpen(false)}
-                                className='text-gray-400 hover:text-gray-600 dark:hover:text-zinc-200 transition p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800'>
+                                className='text-gray-400 hover:text-gray-600 dark:hover:text-zinc-200 p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800'>
                                 <X size={18} />
                             </button>
                         </div>
-
-                        {/* Pilihan Opsi Report Radio Button Minimalis */}
                         <div className='flex flex-col gap-2.5 my-1'>
                             {[
                                 { id: "nsfw_unmarked", label: "Konten mengandung NSFW tapi belum ditag" },
@@ -470,11 +516,7 @@ export default function PostDetailClient({ params }: { params: { id: string } })
                             ].map((item) => (
                                 <label
                                     key={item.id}
-                                    className={`flex items-center gap-3 px-4 py-3 rounded-xl border cursor-pointer text-sm font-medium transition ${
-                                        selectedReason === item.id ?
-                                            "border-red-500 bg-red-50/50 dark:bg-red-950/10 text-red-600 dark:text-red-400"
-                                        :   "border-gray-200 dark:border-zinc-800 hover:bg-gray-50 dark:hover:bg-zinc-800/50 text-gray-700 dark:text-zinc-300"
-                                    }`}>
+                                    className={`flex items-center gap-3 px-4 py-3 rounded-xl border cursor-pointer text-sm font-medium transition ${selectedReason === item.id ? "border-red-500 bg-red-50/50 dark:bg-red-950/10 text-red-600 dark:text-red-400" : "border-gray-200 dark:border-zinc-800 hover:bg-gray-50 dark:hover:bg-zinc-800/50 text-gray-700 dark:text-zinc-300"}`}>
                                     <input
                                         type='radio'
                                         name='reportReason'
@@ -487,8 +529,6 @@ export default function PostDetailClient({ params }: { params: { id: string } })
                                 </label>
                             ))}
                         </div>
-
-                        {/* Textarea Tambahan jika memilih 'other' */}
                         {selectedReason === "other" && (
                             <textarea
                                 disabled={reporting}
@@ -496,7 +536,95 @@ export default function PostDetailClient({ params }: { params: { id: string } })
                                 value={customReasonText}
                                 onChange={(e) => setCustomReasonText(e.target.value)}
                                 maxLength={200}
-                                className='w-full text-sm p-3 rounded-xl border border-gray-200 dark:border-zinc-800 bg-transparent text-black dark:text-white focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500 min-h-[80px] resize-none transition'
+                                className='w-full text-sm p-3 rounded-xl border border-gray-200 dark:border-zinc-800 bg-transparent text-black dark:text-white min-h-[80px] resize-none'
+                            />
+                        )}
+                        <div className='flex items-center justify-end gap-2.5 pt-2 border-t border-gray-100 dark:border-zinc-800'>
+                            <button
+                                type='button'
+                                disabled={reporting}
+                                onClick={() => setIsReportModalOpen(false)}
+                                className='px-4 py-2 text-sm font-medium rounded-xl text-gray-500 dark:text-zinc-400'>
+                                Batal
+                            </button>
+                            <button
+                                type='button'
+                                disabled={reporting || !selectedReason}
+                                onClick={submitReport}
+                                className='px-5 py-2 text-sm font-semibold rounded-xl bg-red-500 text-white flex items-center gap-1.5'>
+                                {reporting ?
+                                    <>
+                                        <div className='w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin' />
+                                        <span>Mengirim...</span>
+                                    </>
+                                :   <span>Kirim Laporan</span>}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ==================== TAMBAHAN BARU: CUSTOM MODAL REPORT COMMENT UI ==================== */}
+            {isCommentReportModalOpen && (
+                <div className='fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in'>
+                    {/* Backdrop Blur Gelap */}
+                    <div
+                        className='absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity'
+                        onClick={() => !reportingComment && setIsCommentReportModalOpen(false)}
+                    />
+
+                    {/* Isi Kotak Modal */}
+                    <div className='relative w-full max-w-md transform rounded-2xl bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 p-6 text-left shadow-2xl transition-all scale-100 flex flex-col gap-4 z-10'>
+                        {/* Header Modal */}
+                        <div className='flex items-center justify-between border-b border-gray-100 dark:border-zinc-800 pb-3'>
+                            <div className='flex items-center gap-2 text-orange-500 dark:text-orange-400 font-bold text-lg'>
+                                <AlertTriangle size={20} />
+                                <span>Laporkan Komentar</span>
+                            </div>
+                            <button
+                                disabled={reportingComment}
+                                onClick={() => setIsCommentReportModalOpen(false)}
+                                className='text-gray-400 hover:text-gray-600 dark:hover:text-zinc-200 transition p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800'>
+                                <X size={18} />
+                            </button>
+                        </div>
+
+                        {/* Pilihan Opsi Report Komentar */}
+                        <div className='flex flex-col gap-2.5 my-1'>
+                            {[
+                                { id: "harassment", label: "Pelecehan / Perundungan / Ujaran Kebencian" },
+                                { id: "spam_comment", label: "Spam / Link Tidak Aman / Promosi Palsu" },
+                                { id: "inappropriate", label: "Komentar Tidak Pantas / Mengandung Seksual" },
+                                { id: "other", label: "Alasan lainnya" },
+                            ].map((item) => (
+                                <label
+                                    key={item.id}
+                                    className={`flex items-center gap-3 px-4 py-3 rounded-xl border cursor-pointer text-sm font-medium transition ${
+                                        selectedCommentReason === item.id ?
+                                            "border-orange-500 bg-orange-50/50 dark:bg-orange-950/10 text-orange-600 dark:text-orange-400"
+                                        :   "border-gray-200 dark:border-zinc-800 hover:bg-gray-50 dark:hover:bg-zinc-800/50 text-gray-700 dark:text-zinc-300"
+                                    }`}>
+                                    <input
+                                        type='radio'
+                                        name='commentReportReason'
+                                        value={item.id}
+                                        checked={selectedCommentReason === item.id}
+                                        onChange={(e) => setSelectedCommentReason(e.target.value)}
+                                        className='accent-orange-500 w-4 h-4'
+                                    />
+                                    <span>{item.label}</span>
+                                </label>
+                            ))}
+                        </div>
+
+                        {selectedCommentReason === "other" && (
+                            <textarea
+                                disabled={reportingComment}
+                                placeholder='Tuliskan alasan spesifik mengapa komentar ini melanggar peraturan...'
+                                value={customCommentReasonText}
+                                onChange={(e) => setCustomCommentReasonText(e.target.value)}
+                                maxLength={200}
+                                className='w-full text-sm p-3 rounded-xl border border-gray-200 dark:border-zinc-800 bg-transparent text-black dark:text-white focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500 min-h-[80px] resize-none transition'
                             />
                         )}
 
@@ -504,17 +632,17 @@ export default function PostDetailClient({ params }: { params: { id: string } })
                         <div className='flex items-center justify-end gap-2.5 pt-2 border-t border-gray-100 dark:border-zinc-800'>
                             <button
                                 type='button'
-                                disabled={reporting}
-                                onClick={() => setIsReportModalOpen(false)}
+                                disabled={reportingComment}
+                                onClick={() => setIsCommentReportModalOpen(false)}
                                 className='px-4 py-2 text-sm font-medium rounded-xl text-gray-500 hover:text-gray-700 dark:text-zinc-400 dark:hover:text-zinc-200 transition'>
                                 Batal
                             </button>
                             <button
                                 type='button'
-                                disabled={reporting || !selectedReason}
-                                onClick={submitReport}
-                                className='px-5 py-2 text-sm font-semibold rounded-xl bg-red-500 hover:bg-red-600 active:bg-red-700 text-white shadow-md shadow-red-500/10 transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5'>
-                                {reporting ?
+                                disabled={reportingComment || !selectedCommentReason}
+                                onClick={submitCommentReport}
+                                className='px-5 py-2 text-sm font-semibold rounded-xl bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white shadow-md shadow-orange-500/10 transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5'>
+                                {reportingComment ?
                                     <>
                                         <div className='w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin' />
                                         <span>Mengirim...</span>

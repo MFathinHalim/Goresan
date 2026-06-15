@@ -236,7 +236,7 @@ export default function Home() {
                             </div>
                         : posts.length > 0 ?
                             <div className='w-full flex justify-center py-10 mt-6 text-sm text-zinc-400 dark:text-zinc-500 border-t border-zinc-100 dark:border-zinc-900'>
-                                Kamu telah mencapai ujung halaman ✨
+                                Kamu telah mencapai ujung halaman
                             </div>
                         :   null}
                     </>
